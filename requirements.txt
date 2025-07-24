@@ -1,0 +1,17 @@
+setuptools
+pandas
+geopandas
+numpy 
+pykrige
+matplotlib
+shapely
+rasterio 
+scipy
+xgboost 
+requests
+geemap
+scikit-learn
+seaborn
+shap
+rispy
+xmltodict
