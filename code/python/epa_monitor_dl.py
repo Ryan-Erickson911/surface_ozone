@@ -35,7 +35,7 @@ def mon_to_gdf(monitor_df):
 # Main function for final monthly monitor data. Gathers data from http server on EPA website. An account must be created and verified by the EPA to gain access. 
 # for testing => year_start, year_end, param_code,state_res,county_res=2018,2024,"44201","04",["Maricopa", "Pinal", "Pima"] -> units_of_measure = PPM
 def get_daily_epa_data(year_start=2018, year_end=2024, param_code="44201",state_res="04", county_res=["Maricopa", "Pinal", "Pima"]):
-    epa_email = os.environ.get('epa_email')
+    epa_email = os.environ.get('epa_email') # you will need your own EPA account
     epa_key = os.environ.get('epa_key')
     years_list=range(year_start, year_end + 1) #list of years
     param=param_code #aerosol param code from EPA
@@ -50,8 +50,8 @@ def get_daily_epa_data(year_start=2018, year_end=2024, param_code="44201",state_
             print(f"No monitor data avlaiable for {year}")
             continue
         print(f'Adding {year} monthly averages to dataset')
-        filtered_oz=download[download["county"].isin(photuc_metro_counties)]
-        filtered_oz['site_id']=filtered_oz['state_code'].values+filtered_oz['county_code'].values+filtered_oz['site_number'].values
+        filtered_oz=download[download["county"].isin(photuc_metro_counties)].copy()
+        filtered_oz.loc[:, 'site_id'] = filtered_oz.loc[:,['state_code', 'county_code', 'site_number']].astype(str).agg(''.join, axis=1)
         ozstand_filter = filtered_oz.loc[(filtered_oz['pollutant_standard'] == 'Ozone 8-hour 2015')]
         site_ids=ozstand_filter['site_id'].unique().copy()
         print(f'Number of sites found in {year}: {len(site_ids)}')
@@ -75,7 +75,7 @@ def get_daily_epa_data(year_start=2018, year_end=2024, param_code="44201",state_
     print('Complete')
     return monitors
 # Desired path to final data
-tbls_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables')
+tbls_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables') # most likely spot for path changes -> Change (os.path.expanduser('~'), "Documents", "Github") to path to surface_ozone
 final_path = os.path.join(tbls_path,'monitor_tables')
 if not os.path.exists(tbls_path): os.makedirs(tbls_path)
 if not os.path.exists(final_path): os.makedirs(final_path)

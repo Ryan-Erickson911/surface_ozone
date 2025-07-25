@@ -140,7 +140,7 @@ def display_raster_bands(day=str,path_to_features=str, col_nms=str,title=str,sty
         fig.colorbar(im, ax=ax, orientation="vertical", shrink=0.8)
       else:
         ax.axis('off')
-    fig.suptitle(title, fontsize=16)
+    fig.suptitle(f'{title}', fontsize=16)
     fig.subplots_adjust(left=0.005, bottom=0.015, right=0.995, top=0.935, wspace=0.03, hspace=0.35)
   plt.tight_layout(rect=(0, 0, 1, 0.95))
   plt.savefig(os.path.join(feature_paths,f"features_{day}.png"),dpi=500)
@@ -358,15 +358,16 @@ def mk_pred_grid(day=str,dep_feats=list,msk=False,msk_file_nme=None,res=30):
     raise ValueError("Expected `day` as str and `dep_feats` as list")
   sat_vars, rem_vars = get_feature_dict(dep_feats)
   grid_folder = os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 'predicted_grids')
+  mask_folder = os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'surface_ozone', 'data', 'study_area', 'mask')
   os.makedirs(grid_folder, exist_ok=True)
   output_path = os.path.join(grid_folder, f'photuc_surfo3_{day}.tif')
   if os.path.exists(output_path) and not msk:
     return output_path, False
   if os.path.exists(output_path) and isinstance(msk, str) and msk_file_nme:
-    _, mask_bools = create_high_res_mask(res, msk, msk_file_nme,os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'UCBMasters', 'data', 'study_area', 'mask'))
+    _, mask_bools = create_high_res_mask(res, msk, msk_file_nme,mask_folder)
     return output_path, mask_bools
   if isinstance(msk, str) and msk_file_nme:
-    start, mask_bools = create_high_res_mask(res, msk, msk_file_nme, os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'UCBMasters', 'data', 'study_area', 'mask'))
+    start, mask_bools = create_high_res_mask(res, msk, msk_file_nme, mask_folder)
   else:
     start = sat_vars.iloc[0]['folder_path']
     mask_bools = False

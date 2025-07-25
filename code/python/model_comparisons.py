@@ -19,13 +19,13 @@ import matplotlib.lines as mlines
 from matplotlib.colors import LinearSegmentedColormap as LSC
 from datetime import datetime
 from sklearn.neural_network import MLPRegressor
-import shap
+import random
+random.seed(4199709112)
 ###################################################################################################
-np.random.seed(42)
 # Main Data
 # Result of monthly_extraction.py
 init_dat = pd.read_csv(
-    os.path.join(os.path.expanduser('~'),"Documents","Github","UCBMasters","data","tables","ozone_daily_2018_2023_data.csv"),
+    os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","data","tables",'monitor_tables',"ozone_daily_2018_2023_data.csv"),
     index_col=0
 )
 # Dictionaries of Titles for Plots and Sites
@@ -571,8 +571,6 @@ def model_creation(features,pred_var,type_name)-> tuple[pd.DataFrame, pd.DataFra
     return predictions, models_opt, test_dataframe_version
 ###################################################################################################
 # setting mask values to 0
-import random
-random.seed(4199709112)
 mask_to_zero(s5p_model_2018_2024, ['precip', 'spf_hmdty', 'down_srad', 'min_surf_temp','max_surf_temp', 'wdsp', 'bnid', 'vprps_def'], mask_val=-999)
 mask_to_zero(s5p_model_2018_2024, ['ntl'], mask_val=-999999)
 mask_to_zero(s5p_model_2018_2024, ['ndvi','evi'], mask_val=-44444)
@@ -703,8 +701,8 @@ goat_results, goat_params, goat_features = model_creation(goat_feats,y_data,'GOA
 # all_results, all_params, all_features = model_creation(all_test,y_data,'All Features')
 
 ### Value
-table_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','final')
-
+table_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets')
+if not os.path.exists(table_path): os.makedirs(table_path)
 # Model Outputs
 hist_results.to_csv(os.path.join(table_path,'hist_model_results_seasons.csv'))
 modern_results.to_csv(os.path.join(table_path,'modern_model_results_seasons.csv'))

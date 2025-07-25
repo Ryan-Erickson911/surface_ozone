@@ -88,7 +88,7 @@ def get_raster_differences(nf_name,folder='path', can_be_zero=True):
                     dst.write(current_data)
             print(f"Finished generating daily interpolated TIFFs {nf_name}: {start} to {end}.")
 # A function to get imagery from GEE in either daily values or monthly means
-def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-01-01", last_day="2025-01-01", collection='IDAHO_EPSCOR/GRIDMET', bands=['pr', 'sph', 'srad','tmmn', 'tmmx', 'vs', 'bi', 'vpd'], band_names=['precip', 'spf_hmdty', 'down_srad', 'min_surf_temp','max_surf_temp', 'wdsp', 'bnid', 'vprps_def'],resampling_method='nearest',mask_val=None,resolution=500):
+def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-12-31" , last_day="2025-01-01", collection='IDAHO_EPSCOR/GRIDMET', bands=['pr', 'sph', 'srad','tmmn', 'tmmx', 'vs', 'bi', 'vpd'], band_names=['precip', 'spf_hmdty', 'down_srad', 'min_surf_temp','max_surf_temp', 'wdsp', 'bnid', 'vprps_def'],resampling_method='nearest',mask_val=None,resolution=500):
     intervals = get_daily_intervals(first_day,last_day)
     if not os.path.exists(file_path):
         os.makedirs(file_path)
@@ -136,7 +136,9 @@ def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-01-01
             else:
                 continue
         print(f"   path = {file_path}\n   N = {len(os.listdir(file_path))}\nmoving on...\n")
-
+# Temporal Range -> Added to show changing of temporal rangers per image set is possible
+first_day="2018-12-31" 
+last_day="2025-01-01"
 # GEE Imagery and links to data
 # GRIDMET: https://developers.google.com/earth-engine/datasets/catalog/IDAHO_EPSCOR_GRIDMET#bands
 # 4638.3M Res -> reduced to 500m
@@ -145,44 +147,44 @@ get_imagery(mask_val=-999,resampling_method='bicubic')
 # 10KM Ozone: https://developers.google.com/earth-engine/datasets/catalog/TOMS_MERGED
 # 1978-11-01, 2025-09-16
 # 111000 meters -> reduced to 500m -> 529 files
-get_imagery(daily_10kmoz,'toms-omi_oz',"2018-01-01","2025-01-01",'TOMS/MERGED',['ozone'],['ozone'],resampling_method='bicubic')
+get_imagery(daily_10kmoz,'toms-omi_oz',first_day,last_day,'TOMS/MERGED',['ozone'],['ozone'],resampling_method='bicubic')
 # DAYNIGHT:https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_001_VNP46A2
 # 2012-01-19, 2025-09-09: 500 meters -> All months avaliable 145 files printed
 # get_imagery(daily_daynight,'ccntl',"1992-01-01","2014-01-01","BNU/FGS/CCNL/v1",['b1'],['ntl']) # obsolete until predicitons need to go before 2000-02-18 
 # Corrected nighttime light intensity:https://developers.google.com/earth-engine/datasets/catalog/BNU_FGS_CCNL_v1
 # 1992-01-01, 2014-01-01: 1000 meters -> exported at 500m -> only annual avaliable
-get_imagery(daily_daynight,'viirs_ntl',"2018-01-01","2025-01-01","NASA/VIIRS/002/VNP46A2",['DNB_BRDF_Corrected_NTL'],['ntl'],mask_val=-999999)
+get_imagery(daily_daynight,'viirs_ntl',first_day,last_day,"NASA/VIIRS/002/VNP46A2",['DNB_BRDF_Corrected_NTL'],['ntl'],mask_val=-999999)
 # NDVI -> 677 files -> overlap
 # 1981-07-01 2013-12-16: 9277m: ee.ImageCollection("NASA/GIMMS/3GV0"): exported at 500m
 #### NASA
 # get_imagery(daily_ndvi,'ndvi_nasa',"1981-07-01","2013-12-16",'NASA/GIMMS/3GV0',['ndvi'],['ndvi']) # obsolete until predicitons need to go before 2000-02-18 
 # 2000-02-18 2025-09-13:  250m: ee.ImageCollection("MODIS/061/MOD13Q1"): exported at 500m
 #### MODIS: https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MOD13Q1
-get_imagery(daily_ndvi,'ndvi_modis','2018-01-01','2025-01-01','MODIS/061/MOD13Q1',['NDVI','EVI'],['ndvi','evi'],mask_val=-44444)
+get_imagery(daily_ndvi,'ndvi_modis',first_day,last_day,'MODIS/061/MOD13Q1',['NDVI','EVI'],['ndvi','evi'],mask_val=-44444)
 # Sentinal 5P - https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_O3: 
 #  1km Ozone -> 677 files; 2025-10-18 - Current
-get_imagery(daily_s5p,'s5p_1km','2018-10-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_O3',['O3_column_number_density','O3_effective_temperature'],['tco_nd','tco_temp'],resampling_method='bicubic')
+get_imagery(daily_s5p,'s5p_1km',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_O3',['O3_column_number_density','O3_effective_temperature'],['tco_nd','tco_temp'],resampling_method='bicubic')
 # Aerosol Index:https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_AER_AI
 # 2018-07-10 - Current
 # 1113.2m
-get_imagery(daily_aerosols,'arsl','2018-10-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_AER_AI',['absorbing_aerosol_index'],['arsl_idx'],resampling_method='bicubic')
+get_imagery(daily_aerosols,'arsl',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_AER_AI',['absorbing_aerosol_index'],['arsl_idx'],resampling_method='bicubic')
 # Nitrogen Dioxide (NO2): https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_NO2
 # 2018-07-10 - Current
 # 1113.2 meters
-get_imagery(daily_no2,'no2','2018-10-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_NO2',['NO2_column_number_density','stratospheric_NO2_column_number_density'],['no2_cnd','strat_no2'],resampling_method='bicubic')
+get_imagery(daily_no2,'no2',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_NO2',['NO2_column_number_density','stratospheric_NO2_column_number_density'],['no2_cnd','strat_no2'],resampling_method='bicubic')
 # Carbon Monoxide (CO): https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_CO
 # 2018-11-22 - Current
 # 1113.2 meters
-get_imagery(daily_co,'co','2018-10-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_CO',['CO_column_number_density','H2O_column_number_density'],['carmon_cnd','h2o_cnd'],resampling_method='bicubic')
+get_imagery(daily_co,'co',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_CO',['CO_column_number_density','H2O_column_number_density'],['carmon_cnd','h2o_cnd'],resampling_method='bicubic')
 # Formaldehyde concentrations:https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_HCHO
 # 2018-10-02::2025-10-29
 # 1113.2m
-get_imagery(daily_hcho,'tropo_hoco','2018-12-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_HCHO',['tropospheric_HCHO_column_number_density','tropospheric_HCHO_column_number_density_amf','HCHO_slant_column_number_density'],['tcd_formald','tcd_formald_amf','tcd_formald_slant'],resampling_method='bicubic')
+get_imagery(daily_hcho,'tropo_hoco',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_HCHO',['tropospheric_HCHO_column_number_density','tropospheric_HCHO_column_number_density_amf','HCHO_slant_column_number_density'],['tcd_formald','tcd_formald_amf','tcd_formald_slant'],resampling_method='bicubic')
 # Clouds (CDVI):https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_CLOUD#bands
 # 2018-07-05 - Current 
 # 1113.2 m
 # Daily
-get_imagery(daily_clouds,'clouds','2018-10-01','2025-01-01','COPERNICUS/S5P/OFFL/L3_CLOUD',['cloud_fraction','cloud_top_pressure','cloud_top_height','cloud_base_pressure','cloud_base_height'],['cf','ctp','cth','cbp','cbh'], resampling_method='bicubic')
+get_imagery(daily_clouds,'clouds',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_CLOUD',['cloud_fraction','cloud_top_pressure','cloud_top_height','cloud_base_pressure','cloud_base_height'],['cf','ctp','cth','cbp','cbh'], resampling_method='bicubic')
 
 # Creating Missing Daily Rasters
 get_raster_differences('ntl',daily_daynight)
