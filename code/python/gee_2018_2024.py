@@ -3,7 +3,6 @@ import ee
 import os
 import rasterio as ro
 from datetime import datetime, timedelta
-
 # This script gathers the necessary raster data from Google Earth Engine (GEE). This will be used in the extraction and model output process.
 ee.Authenticate(auth_mode=os.environ.get('host_key'))
 ee.Initialize(project=os.environ.get('gee_apikey_re'))
@@ -13,7 +12,6 @@ tif_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_oz
 if not os.path.exists(tif_path): os.makedirs(tif_path)
 high_res_grid_path = os.path.join(tif_path, 'p_grd','daily')
 if not os.path.exists(high_res_grid_path): os.makedirs(high_res_grid_path)
-
 # Data Paths
 daily_gmet = os.path.join(tif_path,'gridmet','daily')
 daily_10kmoz = os.path.join(tif_path,'ozone10km','daily')
@@ -26,7 +24,6 @@ daily_co = os.path.join(tif_path,'s5p','co','daily')
 daily_no2 = os.path.join(tif_path,'s5p','no2','daily')
 daily_hcho = os.path.join(tif_path,'s5p','hcho','daily')
 daily_clouds = os.path.join(tif_path,'s5p','clouds','daily')
-
 # A function to produce a list of daily date ranges in the format necessary for http communication. 
 def get_daily_intervals(start_date, end_date):
     start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -185,7 +182,6 @@ get_imagery(daily_hcho,'tropo_hoco',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_H
 # 1113.2 m
 # Daily
 get_imagery(daily_clouds,'clouds',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_CLOUD',['cloud_fraction','cloud_top_pressure','cloud_top_height','cloud_base_pressure','cloud_base_height'],['cf','ctp','cth','cbp','cbh'], resampling_method='bicubic')
-
 # Creating Missing Daily Rasters
 get_raster_differences('ntl',daily_daynight)
 get_raster_differences('ndvi',daily_ndvi)
@@ -196,7 +192,6 @@ get_raster_differences('no2',daily_no2)
 get_raster_differences('hoco',daily_hcho)
 get_raster_differences('cld',daily_clouds)
 get_raster_differences('tomi',daily_10kmoz, can_be_zero=False)
-
 ########### Final File Counts
 # Daily
 print(f'Files in {daily_gmet}: {len(os.listdir(daily_gmet))}')
@@ -208,14 +203,12 @@ print(f'Files in {daily_aerosols}: {len(os.listdir(daily_aerosols))}')
 print(f'Files in {daily_no2}: {len(os.listdir(daily_no2))}')
 print(f'Files in {daily_hcho}: {len(os.listdir(daily_hcho))}')
 print(f'Files in {daily_clouds}: {len(os.listdir(daily_clouds))}')
-
 # for when imputation goes awry
 # def remove_imputated_files(path):
 #     files_to_remove = [f for f in os.listdir(path) if '_imp_' in f or '.aux' in f]
 #     for f in files_to_remove:
 #         os.remove(os.path.join(path, f))
 #         print(f'Removed {f}')
-
 # remove_imputated_files(daily_daynight)
 # remove_imputated_files(daily_ndvi)
 # remove_imputated_files(daily_s5p)
