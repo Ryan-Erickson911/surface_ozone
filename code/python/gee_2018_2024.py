@@ -53,10 +53,7 @@ def get_raster_differences(nf_name,folder='path', can_be_zero=True):
         files = os.listdir(folder)
     else:
         files = os.listdir(folder)
-    files_sorted = sorted(
-        files,
-        key=lambda x: datetime.strptime(x[-14:-4], "%Y-%m-%d")
-    )
+    files_sorted = sorted(files,key=lambda x: datetime.strptime(x[-14:-4], "%Y-%m-%d"))
     paths_sorted = [os.path.join(folder, f) for f in files_sorted]
     dates = [(paths_sorted[i], paths_sorted[i+1]) for i in range(len(paths_sorted) - 1)]
     for x,y in dates:
@@ -79,13 +76,13 @@ def get_raster_differences(nf_name,folder='path', can_be_zero=True):
             current_data = data_1.copy()
             for day in range(1, difference):
                 date_str = (date1 + timedelta(days=day)).strftime("%Y-%m-%d")# Create filename
-                output_filename = os.path.join(folder, f"{nf_name}_imp_{date_str}.tif")
+                output_filename = os.path.join(folder, f"{nf_name}_{date_str}.tif")
                 current_data = (current_data+daily_change)
                 with ro.open(output_filename, "w", **profile) as dst:
                     dst.write(current_data)
             print(f"Finished generating daily interpolated TIFFs {nf_name}: {start} to {end}.")
 # A function to get imagery from GEE in either daily values or monthly means
-def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-12-31" , last_day="2025-01-01", collection='IDAHO_EPSCOR/GRIDMET', bands=['pr', 'sph', 'srad','tmmn', 'tmmx', 'vs', 'bi', 'vpd'], band_names=['precip', 'spf_hmdty', 'down_srad', 'min_surf_temp','max_surf_temp', 'wdsp', 'bnid', 'vprps_def'],resampling_method='nearest',mask_val=None,resolution=500):
+def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-12-01" , last_day="2025-01-31", collection='IDAHO_EPSCOR/GRIDMET', bands=['pr', 'sph', 'srad','tmmn', 'tmmx', 'vs', 'bi', 'vpd'], band_names=['precip', 'spf_hmdty', 'down_srad', 'min_surf_temp','max_surf_temp', 'wdsp', 'bnid', 'vprps_def'],resampling_method='nearest',mask_val=None,resolution=500):
     intervals = get_daily_intervals(first_day,last_day)
     if not os.path.exists(file_path):
         os.makedirs(file_path)
@@ -134,8 +131,8 @@ def get_imagery(file_path=daily_gmet, file_prefix= 'gmet', first_day="2018-12-31
                 continue
         print(f"   path = {file_path}\n   N = {len(os.listdir(file_path))}\nmoving on...\n")
 # Temporal Range -> Added to show changing of temporal rangers per image set is possible
-first_day="2018-12-31" 
-last_day="2025-01-01"
+first_day="2018-12-01" 
+last_day="2025-01-31"
 # GEE Imagery and links to data
 # GRIDMET: https://developers.google.com/earth-engine/datasets/catalog/IDAHO_EPSCOR_GRIDMET#bands
 # 4638.3M Res -> reduced to 500m
@@ -183,15 +180,16 @@ get_imagery(daily_hcho,'tropo_hoco',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_H
 # Daily
 get_imagery(daily_clouds,'clouds',first_day,last_day,'COPERNICUS/S5P/OFFL/L3_CLOUD',['cloud_fraction','cloud_top_pressure','cloud_top_height','cloud_base_pressure','cloud_base_height'],['cf','ctp','cth','cbp','cbh'], resampling_method='bicubic')
 # Creating Missing Daily Rasters
-get_raster_differences('ntl',daily_daynight)
-get_raster_differences('ndvi',daily_ndvi)
-get_raster_differences('ozone',daily_s5p, can_be_zero=False)
-get_raster_differences('arsl',daily_aerosols)
-get_raster_differences('co',daily_co)
-get_raster_differences('no2',daily_no2)
-get_raster_differences('hoco',daily_hcho)
-get_raster_differences('cld',daily_clouds)
-get_raster_differences('tomi',daily_10kmoz, can_be_zero=False)
+get_raster_differences('gmet_imp',daily_gmet)
+get_raster_differences('ntl_imp',daily_daynight)
+get_raster_differences('ndvi_imp',daily_ndvi)
+get_raster_differences('ozone_imp',daily_s5p, can_be_zero=False)
+get_raster_differences('arsl_imp',daily_aerosols)
+get_raster_differences('co_imp',daily_co)
+get_raster_differences('no2_imp',daily_no2)
+get_raster_differences('hoco_imp',daily_hcho)
+get_raster_differences('cld_imp',daily_clouds)
+get_raster_differences('tomi_imp',daily_10kmoz, can_be_zero=False)
 ########### Final File Counts
 # Daily
 print(f'Files in {daily_gmet}: {len(os.listdir(daily_gmet))}')
@@ -200,6 +198,7 @@ print(f'Files in {daily_daynight}: {len(os.listdir(daily_daynight))}')
 print(f'Files in {daily_ndvi}: {len(os.listdir(daily_ndvi))}')
 print(f'Files in {daily_s5p}: {len(os.listdir(daily_s5p))}')
 print(f'Files in {daily_aerosols}: {len(os.listdir(daily_aerosols))}')
+print(f'Files in {daily_co}: {len(os.listdir(daily_co))}')
 print(f'Files in {daily_no2}: {len(os.listdir(daily_no2))}')
 print(f'Files in {daily_hcho}: {len(os.listdir(daily_hcho))}')
 print(f'Files in {daily_clouds}: {len(os.listdir(daily_clouds))}')

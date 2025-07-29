@@ -24,10 +24,7 @@ random.seed(4199709112)
 ###################################################################################################
 # Main Data
 # Result of monthly_extraction.py
-init_dat = pd.read_csv(
-    os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","data","tables",'monitor_tables',"ozone_daily_2018_2023_data.csv"),
-    index_col=0
-)
+init_dat = pd.read_csv(os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","data","tables",'monitor_tables',"ozone_daily_2019_2024_data.csv"),index_col=0)
 # Dictionaries of Titles for Plots and Sites
 site_series = init_dat.groupby(['site_id']).first()['site_name']
 unnamed_counter = 1
@@ -39,7 +36,6 @@ for site_id, site_name in site_series.items():
         unnamed_counter += 1
     else:
         site_dict[site_id] = site_name.title()
-
 site_dict[40191030]='Green Valley' # (og: 'Green Valley  -Replaces Site 0007 245 W Esperanza')
 site_dict[40139702]='Salt River Recreation Area' # (og: 'Blue Point-Sheriff Station-Tonto Nf-Salt River Recreation Area')
 names_dict = {
@@ -61,7 +57,9 @@ names_dict = {
     'arsl_idx': 'Aerosol Index',
     'no2_cnd': 'Tropospheric NO2',
     'strat_no2': 'Stratospheric NO2',
+    'surface_no2': 'Surface NO2',
     'cloud_volumn': 'Estimated Cloud Volumn',
+    'cloud_pressure': 'Estimated Cloud Pressure',
     'tco_nd': 'S5P 1km',
     'tco_temp': 'S5P TCO Temperature',
     'carmon_cnd' : 'Carbon Monoxide',
@@ -79,14 +77,6 @@ names_dict = {
     'ln_cloud_energy': 'Estimated Cloud Energy',
     'ke_oz': 'TOMs/OMI Kinetic Energy', 
     's5p_ke_oz': 'S5P Kinetic Energy',
-    'down_srad_grad' : 'D.S Radiation (Grad)',
-    'max_surftemp_grad' : 'Max Temperature (Grad)',
-    'd_srad_delta_ratio' : 'D.S Radiation Daily Change Ratio',
-    'wspd_delta_ratio' : 'Average Wind Speed Daily Change Ratio',
-    'vprps_def_delta_ratio' : 'Mean Pressure Deficit Daily Change Ratio',
-    '_ratio' : 'TOMS/OMI 10km O3 Daily Change Ratio',
-    's5p__ratio' : 'Max Surface Temperature Daily Change Ratio',             
-    'temp_delta_ratio' : 'S5P 1km Daily Change Ratio',
     's5p_temp_delta_ratio' : 'S5P TCO Temperature Daily Change Ratio',
     'delta_surf_temp' : 'Change in Surface Temperature',
     'delta_surf_temp_ratio' : 'Daily Change in Surface Temperature Ratio',
@@ -113,11 +103,10 @@ names_dict = {
     'Spring': 'Spring',
     'Summer': 'Summer',
     'Fall': 'Fall'}
-
 # Testing Time Frame: 2019-01-01 - 2024-12-14
 ohe_months = [f'month_{x}' for x in range(1,13)]
 start_date = pd.Timestamp('2018-12-01')
-end_date = pd.Timestamp('2024-12-14')
+end_date = pd.Timestamp('2025-01-16')
 init_dat['date'] = pd.to_datetime(init_dat['date'], format='%Y-%m-%d')  # converting to date time
 init_dat.replace([np.inf, -np.inf], np.nan, inplace=True)
 site_list = np.unique(init_dat[['site_id']]).tolist()
@@ -164,7 +153,7 @@ def set_timedums(datafwame):
     return data, season, full
 
 def plot_pearson(df,title,file):# Function to easily plot Pearson Correlation Coefficient Matrix
-    pearson_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\correlations')
+    pearson_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\correlations') #####PATH FIX HERE
     if not os.path.exists(pearson_path):
         os.makedirs(pearson_path)
     titles = [names_dict[col] for col in df.columns if col in names_dict]
@@ -207,7 +196,7 @@ def hist_grid(
     names_dict = names_dict or {}
     corr_map   = corr_map   or {}
     series = []
-    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')
+    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')#####PATH FIX HERE
     path = os.path.join(s_path,outname)
     for col in df.select_dtypes("number").columns:
         series.append((col, df[col].dropna()))
@@ -246,7 +235,7 @@ def quick_scatter(
     outname="scatter_all.png",# saved to your ~/…/scatter_plots folder
 ):
     d_plot=df.drop(columns=['date'])
-    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\scatter_plots')
+    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\scatter_plots')#####PATH FIX HERE
     path = os.path.join(s_path,outname)
     n = len(d_plot.columns)
     ncols, nrows = 5, math.ceil(n / 5) 
@@ -271,7 +260,7 @@ def quick_scatter(
 
 # Fancy One Feature Plot
 def fancy_predictor_plot(data):
-    pred_ot_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')
+    pred_ot_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')#####PATH FIX HERE
     if not os.path.exists(pred_ot_path):
         os.makedirs(pred_ot_path)
     cmap = LSC.from_list('green_orange_red',['green', 'orange', 'red'],N=3)
@@ -332,7 +321,7 @@ def fancy_predictor_plot(data):
 
 # Over Time by Feature
 def feature_ot_plot(df, title='Features Over Time (2019-2024)', fname="feats_ot"):
-    feature_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\features_overtime')
+    feature_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\features_overtime')#####PATH FIX HERE
     if not os.path.exists(feature_path):
       os.makedirs(feature_path)
     df.loc[:,'st_fips']=df["site_id"].astype(str).str[:4].map({'4013':'Maricopa','4021':'Pinal','4019':'Pima'})
@@ -456,7 +445,6 @@ def model_creation(features,pred_var,type_name)-> tuple[pd.DataFrame, pd.DataFra
     # Data
     test_dataframe_version=x_both[["site_id",'date']+features].copy()
     ## Feature Info
-    n_samples = len(test_dataframe_version)
     num_features=len(features)
     ## Model Params
     adaboost_params = {
@@ -633,6 +621,8 @@ s5p_model_2018_2024['cloud_pressure'] = (s5p_model_2018_2024['cbp']+s5p_model_20
 
 s5p_model_2018_2024['ln_cloud_energy'] = (s5p_model_2018_2024['cloud_pressure']*((4/3)*(np.pi)*(s5p_model_2018_2024['cloud_radius'] ** 3))*s5p_model_2018_2024['cf']).replace(-np.inf,0)
 s5p_model_2018_2024['h2o_energy']=s5p_model_2018_2024['tco_temp']*s5p_model_2018_2024['h2o_cnd']*(3/2)/100000
+
+s5p_model_2018_2024['surf_no2']= (s5p_model_2018_2024['no2_cnd']-s5p_model_2018_2024['strat_no2'])
 # Filtering to Times frame
 sample_start = pd.Timestamp('2019-01-01')
 sample_end = pd.Timestamp('2024-12-14')
@@ -674,11 +664,11 @@ corr_map = {row['pearson_feature']: row['pearson_coef']
 # dat10=X_data[['cloud_radius','cbh','ln_cloud_energy']]
 
 # Pearsons
-### No Time Variables
-no_time=x_seasons.drop(columns=['date','site_id','Winter','Spring','Summer','Fall'])
-plot_pearson(no_time,"Correlation Matrix:\nPre-Feature Transformation",'pearson_2018_2024_notime')
-### Both
-plot_pearson(x_both.drop(columns=['date','site_id']),"Post-Feature Transformation\nAll Temporal Dummy Variables",'pearson_2018_2024_seas')
+# ### No Time Variables
+# no_time=x_seasons.drop(columns=['date','site_id','Winter','Spring','Summer','Fall'])
+# plot_pearson(no_time,"Correlation Matrix:\nPre-Feature Transformation",'pearson_2018_2024_notime')
+# ### Both
+# plot_pearson(x_seasons.drop(columns=['date','site_id']),"Post-Feature Transformation\nAll Temporal Dummy Variables",'pearson_2018_2024_seas')
 # Histograms
 hist = hist_grid(X_data,names_dict=names_dict,corr_map=corr_map,outname="hist_all_2018_2023.png")
 scat=quick_scatter(X_data.drop(columns=['Fall','Spring','Summer','Winter']),y_data,names_dict=names_dict,corr_map=corr_map,outname="scatter_2018_2023.png")
@@ -689,9 +679,9 @@ fancy_predictor_plot(y_data)
 feature_ot_plot(s5p_model_2018_2024, fname="feats_ot_v3")
 
 hist_feats = ['ke_oz','vprps_def','bnid','ndvi','down_srad_moving_wkly_average','max_surf_temp_moving_wkly_average','vprps_def_moving_wkly_average','wdsp_moving_wkly_average','du_transformation_moving_wkly_average','Spring','Summer','Winter']
-modern_feats = ['s5p_ke_oz','vprps_def','max_surf_temp','strat_no2','cf','tcd_formald','h2o_cnd','tco_temp_moving_wkly_average','tco_nd_moving_wkly_average','Spring','Summer','Winter']
+modern_feats = ['s5p_ke_oz','vprps_def','max_surf_temp','surf_no2','cf','tcd_formald','h2o_cnd','tco_temp_moving_wkly_average','tco_nd_moving_wkly_average','Spring','Summer','Winter']
 goat_feats = corr_compare[0:24]['pearson_feature'].values.tolist()
-best_theory_feats = ['ln_cloud_energy','vprps_def','s5p_ke_oz','strat_no2','ndvi','max_surf_temp','bnid','wdsp_moving_wkly_average','Spring','Summer','Winter']
+best_theory_feats = ['surf_no2','vprps_def','s5p_ke_oz','cf','ndvi','max_surf_temp','bnid','wdsp_moving_wkly_average','Spring','Summer','Winter']
 # all_test = corr_compare[:]['pearson_feature'].values.tolist()
 
 hist_results, hist_params, hist_features = model_creation(hist_feats,y_data,'Historical')
@@ -723,127 +713,129 @@ goat_features.to_csv(os.path.join(table_path,'goat_model_features.csv'))
 # all_features.to_csv(os.path.join(table_path,'all_features.csv'))
 
 ###### Season Results:
-# Model Testing Start: Historical
-#   SM: adaboost - 0:02:02
-#     RMSE 0.0075789, MAE 0.00596443, MSE 5.744e-05, Percent Error 13.42%
-#   RK: 0:52:24
-#     RMSE 0.00378871, MAE 0.0027888, MSE 1.435e-05, Percent Error 6.31%
-# --> Complete (t = 0:54:27)
+####### Historical ######
+#   SM: adaboost - 0:01:38
+#     RMSE 0.00747799, MAE 0.00580457, MSE 5.592e-05, Percent Error 13.14%
+#   RK: 0:37:32
+#     RMSE 0.00375139, MAE 0.00277487, MSE 1.407e-05, Percent Error 6.28%
+# --> Complete (t = 0:39:11)
 
-#   SM: gb - 0:50:26
-#     RMSE 0.00679321, MAE 0.00512017, MSE 4.615e-05, Percent Error 11.86%
-#   RK: 0:53:08
-#     RMSE 0.0037768, MAE 0.0027812, MSE 1.426e-05, Percent Error 6.28%
-# --> Complete (t = 1:43:35)
+#   SM: gb - 0:11:03
+#     RMSE 0.00796326, MAE 0.00605906, MSE 6.341e-05, Percent Error 14.24%
+#   RK: 0:37:26
+#     RMSE 0.00370635, MAE 0.00273393, MSE 1.374e-05, Percent Error 6.19%
+# --> Complete (t = 0:48:30)
 
-#   SM: xgrb - 0:00:08
-#     RMSE 0.00492516, MAE 0.00373287, MSE 2.426e-05, Percent Error 8.45%
-#   RK: 0:52:58
-#     RMSE 0.00355515, MAE 0.00263897, MSE 1.264e-05, Percent Error 5.95%
-# --> Complete (t = 0:53:07)
+#   SM: xgrb - 0:00:06
+#     RMSE 0.00461196, MAE 0.00349395, MSE 2.127e-05, Percent Error 7.83%
+#   RK: 0:36:57
+#     RMSE 0.00328109, MAE 0.00245197, MSE 1.077e-05, Percent Error 5.48%
+# --> Complete (t = 0:37:04)
 
-#   SM: rf - 1:23:30
-#     RMSE 0.0018216, MAE 0.00132329, MSE 3.32e-06, Percent Error 2.96%
-#   RK: 0:52:59
-#     RMSE 0.00161897, MAE 0.00119184, MSE 2.62e-06, Percent Error 2.67%
-# --> Complete (t = 2:16:29)
+#   SM: rf - 2:07:01
+#     RMSE 0.00654435, MAE 0.00489872, MSE 4.283e-05, Percent Error 11.14%
+#   RK: 0:37:10
+#     RMSE 0.00370796, MAE 0.00273049, MSE 1.375e-05, Percent Error 6.15%
+# --> Complete (t = 2:44:11)
 
-#   SM: mlper - 0:01:42
-#     RMSE 0.00726452, MAE 0.00556994, MSE 5.277e-05, Percent Error 12.85%
-#   RK: 0:53:38
-#     RMSE 0.00380009, MAE 0.00280465, MSE 1.444e-05, Percent Error 6.33%
-# --> Complete (t = 0:55:20)
-
-# Model Testing Start: Modern
-#   SM: adaboost - 0:01:45
-#     RMSE 0.00769646, MAE 0.0061015, MSE 5.924e-05, Percent Error 13.73%
-#   RK: 0:53:19
-#     RMSE 0.00378087, MAE 0.00278871, MSE 1.43e-05, Percent Error 6.31%
-# --> Complete (t = 0:55:04)
-
-#   SM: gb - 0:21:48
-#     RMSE 0.00625451, MAE 0.00467685, MSE 3.912e-05, Percent Error 10.74%
-#   RK: 0:52:55
-#     RMSE 0.00365315, MAE 0.00269587, MSE 1.335e-05, Percent Error 6.09%
-# --> Complete (t = 1:14:44)
-
-#   SM: xgrb - 0:00:08
-#     RMSE 0.00483397, MAE 0.00365556, MSE 2.337e-05, Percent Error 8.27%
-#   RK: 0:53:09
-#     RMSE 0.00351472, MAE 0.00262002, MSE 1.235e-05, Percent Error 5.91%
-# --> Complete (t = 0:53:17)
-
-#   SM: rf - 1:35:01
-#     RMSE 0.00691283, MAE 0.00528453, MSE 4.779e-05, Percent Error 12.07%
-#   RK: 0:53:04
-#     RMSE 0.0037537, MAE 0.00276663, MSE 1.409e-05, Percent Error 6.25%
-# --> Complete (t = 2:28:06)
-
-#   SM: mlper - 0:01:07
-#     RMSE 0.00786, MAE 0.00608952, MSE 6.178e-05, Percent Error 13.97%
-#   RK: 0:53:45
-#     RMSE 0.00375699, MAE 0.00277263, MSE 1.412e-05, Percent Error 6.29%
-# --> Complete (t = 0:54:52)
-
-# Model Testing Start: Best 7 + Seasonal Time
-#   SM: adaboost - 0:01:39
-#     RMSE 0.00756555, MAE 0.00595705, MSE 5.724e-05, Percent Error 13.43%
-#   RK: 1:03:44
-#     RMSE 0.00628365, MAE 0.00281875, MSE 3.948e-05, Percent Error 6.36%
-# --> Complete (t = 1:05:23)
-
-#   SM: gb - 1:09:04
-#     RMSE 0.00155905, MAE 0.0006047, MSE 2.43e-06, Percent Error 1.47%
-#   RK: 0:40:20
-#     RMSE 0.00112807, MAE 0.00059437, MSE 1.27e-06, Percent Error 1.39%
-# --> Complete (t = 1:49:25)
-
-#   SM: xgrb - 0:00:07
-#     RMSE 0.00488147, MAE 0.0036971, MSE 2.383e-05, Percent Error 8.26%
-#   RK: 0:40:18
-#     RMSE 0.00333865, MAE 0.00250494, MSE 1.115e-05, Percent Error 5.62%
-# --> Complete (t = 0:40:25)
-
-#   SM: rf - 1:30:47
-#     RMSE 0.00193484, MAE 0.00141947, MSE 3.74e-06, Percent Error 3.17%
-#   RK: 0:40:01
-#     RMSE 0.00155909, MAE 0.00115431, MSE 2.43e-06, Percent Error 2.59%
-# --> Complete (t = 2:10:49)
-
-#   SM: mlper - 0:00:47
-#     RMSE 0.00751605, MAE 0.00577725, MSE 5.649e-05, Percent Error 13.39%
-#   RK: 0:40:32
-#     RMSE 0.00379025, MAE 0.00279783, MSE 1.437e-05, Percent Error 6.33%
-# --> Complete (t = 0:41:20)
+#   SM: mlper - 0:00:51
+#     RMSE 0.00754801, MAE 0.00582052, MSE 5.697e-05, Percent Error 13.3%
+#   RK: 0:37:16
+#     RMSE 0.00375416, MAE 0.00277921, MSE 1.409e-05, Percent Error 6.29%
+# --> Complete (t = 0:38:08)
 
 
-# Model Testing Start: Top 25
-#   SM: adaboost - 0:03:34
-#     RMSE 0.00703172, MAE 0.00551466, MSE 4.945e-05, Percent Error 12.48%
-#   RK: 0:40:25
-#     RMSE 0.0037514, MAE 0.00276951, MSE 1.407e-05, Percent Error 6.26%
-# --> Complete (t = 0:44:00)
+####### Modern ######
+#   SM: adaboost - 0:01:16
+#     RMSE 0.00753311, MAE 0.00588587, MSE 5.675e-05, Percent Error 13.43%
+#   RK: 0:37:31
+#     RMSE 0.00374411, MAE 0.00276422, MSE 1.402e-05, Percent Error 6.25%
+# --> Complete (t = 0:38:48)
 
-#   SM: gb - 0:18:06
-#     RMSE 0.00794283, MAE 0.00601949, MSE 6.309e-05, Percent Error 14.18%
-#   RK: 0:40:34
-#     RMSE 0.00371298, MAE 0.00273718, MSE 1.379e-05, Percent Error 6.2%
-# --> Complete (t = 0:58:41)
+#   SM: gb - 0:48:20
+#     RMSE 0.01172363, MAE 0.00937994, MSE 0.00013744, Percent Error 22.35%
+#   RK: 0:37:19
+#     RMSE 0.00368729, MAE 0.0027089, MSE 1.36e-05, Percent Error 6.14%
+# --> Complete (t = 1:25:40)
 
-#   SM: xgrb - 0:00:11
-#     RMSE 0.00444367, MAE 0.00342137, MSE 1.975e-05, Percent Error 7.64%
-#   RK: 0:40:04
-#     RMSE 0.00341098, MAE 0.00254514, MSE 1.163e-05, Percent Error 5.71%
-# --> Complete (t = 0:40:15)
+#   SM: xgrb - 0:00:06
+#     RMSE 0.00463185, MAE 0.00354559, MSE 2.145e-05, Percent Error 8.05%
+#   RK: 0:36:49
+#     RMSE 0.00343216, MAE 0.00256902, MSE 1.178e-05, Percent Error 5.79%
+# --> Complete (t = 0:36:56)
 
-#   SM: rf - 7:13:41
-#     RMSE 0.00608843, MAE 0.00461259, MSE 3.707e-05, Percent Error 10.54%
-#   RK: 0:52:27
-#     RMSE 0.00365764, MAE 0.00269094, MSE 1.338e-05, Percent Error 6.07%
-# --> Complete (t = 8:06:09)
+#   SM: rf - 1:01:24
+#     RMSE 0.00661695, MAE 0.00500931, MSE 4.378e-05, Percent Error 11.61%
+#   RK: 0:37:25
+#     RMSE 0.00368245, MAE 0.0027119, MSE 1.356e-05, Percent Error 6.14%
+# --> Complete (t = 1:38:50)
 
-#   SM: mlper - 0:00:54
-#     RMSE 0.00751407, MAE 0.00578524, MSE 5.646e-05, Percent Error 13.15%
-#   RK: 0:52:28
-#     RMSE 0.00375692, MAE 0.00277099, MSE 1.411e-05, Percent Error 6.28%
-# --> Complete (t = 0:53:22)
+#   SM: mlper - 0:01:01
+#     RMSE 0.00870919, MAE 0.00660242, MSE 7.585e-05, Percent Error 14.96%
+#   RK: 0:37:41
+#     RMSE 0.00476767, MAE 0.00298222, MSE 2.273e-05, Percent Error 6.82%
+# --> Complete (t = 0:38:42)
+
+
+####### Theory ######
+#   SM: adaboost - 0:01:54
+#     RMSE 0.00757523, MAE 0.00595773, MSE 5.738e-05, Percent Error 13.42%
+#   RK: 0:37:17
+#     RMSE 0.00375184, MAE 0.00277456, MSE 1.408e-05, Percent Error 6.26%
+# --> Complete (t = 0:39:11)
+
+#   SM: gb - 0:26:17
+#     RMSE 0.00721106, MAE 0.00547697, MSE 5.2e-05, Percent Error 12.52%
+#   RK: 0:37:16
+#     RMSE 0.00370874, MAE 0.00273732, MSE 1.375e-05, Percent Error 6.18%
+# --> Complete (t = 1:03:34)
+
+#   SM: xgrb - 0:00:05
+#     RMSE 0.00509188, MAE 0.00387005, MSE 2.593e-05, Percent Error 8.64%
+#   RK: 0:36:54
+#     RMSE 0.00345308, MAE 0.00258901, MSE 1.192e-05, Percent Error 5.8%
+# --> Complete (t = 0:37:00)
+
+#   SM: rf - 1:38:58
+#     RMSE 0.00702919, MAE 0.00538245, MSE 4.941e-05, Percent Error 12.21%
+#   RK: 0:49:42
+#     RMSE 0.00377356, MAE 0.00279206, MSE 1.424e-05, Percent Error 6.29%
+# --> Complete (t = 2:28:40)
+
+#   SM: mlper - 0:00:33
+#     RMSE 0.0073112, MAE 0.00560634, MSE 5.345e-05, Percent Error 12.85%
+#   RK: 0:50:47
+#     RMSE 0.00387443, MAE 0.00285087, MSE 1.501e-05, Percent Error 6.44%
+# --> Complete (t = 0:51:21)
+
+
+ ####### GOAT 24 ######
+#   SM: adaboost - 0:01:56
+#     RMSE 0.00731421, MAE 0.00584134, MSE 5.35e-05, Percent Error 13.03%
+# RK: 0:50:43
+#     RMSE 0.00373968, MAE 0.0027722, MSE 1.399e-05, Percent Error 6.27%
+# --> Complete (t = 0:52:39)
+
+#   SM: gb - 0:48:08
+#     RMSE 0.00221258, MAE 0.00154169, MSE 4.9e-06, Percent Error 3.47%
+#   RK: 1:00:53
+#     RMSE 0.0020705, MAE 0.00147493, MSE 4.29e-06, Percent Error 3.31%
+# --> Complete (t = 1:49:01)
+
+#   SM: xgrb - 0:00:20
+#     RMSE 0.00502586, MAE 0.00386524, MSE 2.526e-05, Percent Error 8.68%
+#   RK: 1:05:46
+#     RMSE 0.00355683, MAE 0.00264438, MSE 1.265e-05, Percent Error 5.95%
+# --> Complete (t = 1:06:07)
+
+#   SM: rf - 5:48:07
+#     RMSE 0.00152887, MAE 0.00113813, MSE 2.34e-06, Percent Error 2.56%
+#   RK: 0:44:13
+#     RMSE 0.00145614, MAE 0.00107848, MSE 2.12e-06, Percent Error 2.43%
+# --> Complete (t = 6:32:20)
+
+#   SM: mlper - 0:00:48
+#     RMSE 0.00771753, MAE 0.00594941, MSE 5.956e-05, Percent Error 13.41%
+#   RK: 0:45:24
+#     RMSE 0.00378018, MAE 0.00276562, MSE 1.429e-05, Percent Error 6.28%
+# --> Complete (t = 0:46:13)

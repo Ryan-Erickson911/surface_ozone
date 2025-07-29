@@ -26,19 +26,46 @@ import numpy.ma as ma
 import matplotlib.patheffects as path_effects
 from rasterio.mask import mask
 from shapely.geometry import mapping
-
+### Paths
+x_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 'predicted_grids')
+ysm_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','surface_ozone','writing','maps','ml_outputs')
+yrk_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','surface_ozone','writing','maps','rk_outputs')
+yfin_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','surface_ozone','writing','maps','smark_outputs')
+path_to_final_tables = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets')
+path_to_images = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "writing",'imgs')
+mapping_data = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'mapping')
+# Census Shape File Cleaning
+def clean_data(fname,bfname='ACS_ST_5Y_income_2019.csv',total=False, year='',sep=',',var_names=['S1901_C01_001E','S1901_C01_012E','S1901_C01_013E'], col_names=['hh_count','median_hh_inc','mean_hh_inc']):
+    os.makedirs(os.path.join(mapping_data,'census_data'),exist_ok=True) 
+    data = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','income_pop_tables',bfname))
+    data = data.iloc[1:].reset_index(drop=True)
+    if total:
+      data = data.iloc[2:].reset_index(drop=True)
+    data[['tract', 'county', 'state']] = (data['NAME'].str.split(sep, expand=True))
+    data['GEOID'] = (data['GEO_ID'].str.replace(r'^1400000US0', '0', regex=True)).astype(str)
+    data=data.loc[data['county'].str.contains('|'.join(site_group_names.values())),['GEOID','tract', 'county']+var_names]
+    data.columns = ['GEOID','tract','county']+col_names
+    data.to_csv(os.path.join(mapping_data,'census_data',f'ACS{fname}5Y_{year}_clean.csv'),sep=';', index=False)
+def merge_cen_data(gpd, year):
+  inc_data = pd.read_csv(os.path.join(mapping_data,'census_data',f'ACSInc5Y_{year}_clean.csv'),sep=';')   
+  pop_data = pd.read_csv(os.path.join(mapping_data,'census_data',f'ACSPop5Y_{year}_clean.csv'),sep=';')  
+  add_inc = inc_data[['GEOID','tract','county','hh_count','median_hh_inc','mean_hh_inc']].copy()
+  add_pop = pop_data[['GEOID','tract','county','total_pop','total_hhunits']].copy()
+  joined = pd.merge(add_inc, add_pop, on=['GEOID','tract','county'])
+  joined.columns = ['GEOID','tract','county', f'hhtot{year}', f'medinc{year}', f'mewinc{year}',f'estpop{year}', f'hhninc{year}']
+  return gpd.merge(joined, on='GEOID',copy=False,suffixes=[None,'del'])
 def suffix(d):
     return str(d) + ("th" if 11 <= d <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(d % 10, "th"))
 def plot_model_rk_layout(
     day,
     feature_stack_path,
     title='',
-    ysm_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'results', 'final_surfo3', 'ml_outputs'),
-    yrk_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'results', 'final_surfo3', 'rk_outputs'),
+    ysm_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'results', 'final_surfo3', 'ml_outputs'),
+    yrk_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'results', 'final_surfo3', 'rk_outputs'),
 ):
-    target_crs = "EPSG:32612"
+    target_crs = "EPSG:26949"
     date_obj = datetime.strptime(day, '%Y-%m-%d')
-    fin_out=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'writing', 'imgs', 'prediction_displays')
+    fin_out=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'writing', 'imgs', 'prediction_displays')
     fin = os.path.join(fin_out, 'model_rk')
     os.makedirs(fin_out, exist_ok=True)
     os.makedirs(fin, exist_ok=True)
@@ -190,6 +217,8 @@ def make_model_figure(predictive_model,predictive_features,fname,title,features 
     -------
     predictive model is a model_results.csv and predictive features is a model_features.csv. 
     """
+    path_to_final_images = os.path.join(path_to_images,'histograms')
+    os.makedirs(path_to_final_images, exist_ok=True)
     predictor = predictive_model[['site_group', 'max_value']].copy()
     palette = sns.color_palette("colorblind", n_colors=predictor['site_group'].nunique())
     predictor['max_value'] = predictor['max_value'] * 1000  # ppm to ppb
@@ -270,39 +299,34 @@ def get_metrics(df):
   sorted = aggregated_metrics.sort_values(by='R$^{2}$ Score', ascending=False)
   best_predictive_column = sorted.iloc[0]['Model']
   return best_predictive_column, sorted
-def make_corr_plot(df, feats,fname):
+def make_corr_plot(df, feats,fname, circ_size=1000):
+    beta_dict = dict(zip(df_variable_codes_df['Variable Name'],df_variable_codes_df['Variable Code']))
+    path_to_final_images = os.path.join(path_to_images,'correlations')
+    os.makedirs(path_to_final_images,exist_ok=True) 
     corr = (pd.merge(df[['site_id','date','max_value']], feats).drop(columns=['site_id','date','site_group']).corr(method='pearson', min_periods=366))
-    desired_order = list(names_dict.keys())
-    order = [k for k in desired_order if k in corr.index]
+    order = [k for k in names_dict if k in corr.index]
     corr = corr.reindex(index=order, columns=order)
     corr_pretty = corr.rename(index=names_dict, columns=names_dict)
+    corr_pretty = corr_pretty.rename(index=beta_dict, columns=beta_dict)
     n = corr_pretty.shape[0]
     fig, ax = plt.subplots(figsize=(10,10))
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap('RdBu_r')
     for i in range(n):
         for j in range(i):
             r = corr_pretty.iat[i, j]
-            size  = np.abs(r) * 1000
+            size  = np.abs(r) * circ_size
             color = cmap((r + 1) / 2)
             text_color = ('red' if r >  0.2
-                          else 'blue'   if r < -0.2
-                          else 'black')
+                        else 'blue'   if r < -0.2
+                        else 'black')
             ax.scatter(i, j, s=size, color=color, edgecolors='white', linewidth=0.5)
             ax.text(j, i,
                     f"{r:.2f}",
                     ha='center', va='center',
                     color=text_color,
                     fontsize=7)
-    for i, raw in enumerate(corr_pretty.columns):        
-        r = corr_pretty.iloc[0, i]
-        text_color = ('red'   if r >  0.2 else'blue'  if r < -0.2 else'black')
-        nice = raw.replace(' ', '\n')
-        ax.text(i, i, nice,ha='center', va='center',fontsize=7,color=text_color)
-        nice = raw.replace(' ', '\n')
-        ax.text(i, i,
-                nice,
-                ha='center', va='center',
-                fontsize=7)
+    for i, raw in enumerate(corr_pretty.columns):       
+        ax.text(i, i, f'{raw}',ha='center', va='center',fontsize=12,color='black')
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_xticks(np.arange(n+1) - 0.5, minor=True)
@@ -312,12 +336,12 @@ def make_corr_plot(df, feats,fname):
     ax.invert_yaxis()
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=-1, vmax=1))
     sm.set_array([])
-    fig.colorbar(sm, ax=ax, pad=0.04).set_label("Pearson $r$", rotation=270, labelpad=15)
+    fig.colorbar(sm, ax=ax, pad=0.04, fraction=0.03).set_label("Pearson $r$", rotation=270, labelpad=15)
     ax.set_title("Correlation graph between input variables", pad=20, fontsize=16)
     plt.tight_layout()
     plt.show()
     fig.savefig(os.path.join(path_to_final_images,f'{fname}.png'))
-def smark_plot(df,day='2023-04-01', path=path_to_final_images):
+def smark_plot(df,day='2023-04-01', path=path_to_images):
   fina = os.path.join(path,'prediction_displays', 'surface_ozone')
   fin = os.path.join(fina,f'ozone_{day}.png')
   os.makedirs(fina, exist_ok=True)
@@ -332,12 +356,12 @@ def smark_plot(df,day='2023-04-01', path=path_to_final_images):
   day_num = int(day[-2:])
   new_day = datetime.strptime(day, '%Y-%m-%d').replace(day=day_num).strftime('%B {S}, %Y')
   formatted_day = new_day.replace('{S}', suffix(day_num))
-  elev = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tifs','elevation','elevation.tif')
-  surface_ozone = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'results','final_surfo3',f'surf_o3_{day}.tif')
+  elev = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tifs','elevation','elevation.tif')
+  surface_ozone = os.path.join(yfin_plot,f'surf_o3_{day}.tif')
   color_map = {'Maricopa County':'#176d9c','Pinal County':'#029e73','Pima County':'#c38820'}
-  photuc = gpd.read_file(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','mapping','photuc_income_pop','photuc_income_pop.shp'))
+  photuc = gpd.read_file(os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'mapping','income_pop_2020_2023','income_pop_2020_2023.shp'))
   photuc['color'] = photuc['county'].map(color_map)
-  target_crs = "EPSG:32612"
+  target_crs = "EPSG:26949"
   shapes = [mapping(geom) for geom in photuc.geometry]
   with rio.open(elev) as src:
       elev_transform, elev_width, elev_height = calculate_default_transform(
@@ -465,69 +489,55 @@ def add_error_plot(ax, testing_df, name,
                           (rects10, '', '')]:
         addlabel(ax, rects, plabel=pl, alabel=al)      
 
-year=2019
-x_plot=os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 'predicted_grids')
-ysm_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','UCBMasters','data','results','final_surfo3','ml_outputs')
-yrk_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','UCBMasters','data','results','final_surfo3','rk_outputs')
-yfin_plot=os.path.join(os.path.expanduser('~'), 'Documents','Github','UCBMasters','data','results','final_surfo3')
-path_to_final_tables = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','final')
-path_to_final_images = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "writing",'imgs')
+##### Only need to run shape file creation and preprocessing once #####
+# county_names = {'013': 'Maricopa County', '019': 'Pima County', '021': 'Pinal County'}
+# shape2019 = gpd.read_file(os.path.join(mapping_data, 'tracts2019','tiger_census_2019.shp'))
+# shape2020_2023 = gpd.read_file(os.path.join(mapping_data, 'tiger_2023_tracts','tl_2023_04_tract.shp'))
 
-# Census Shape File Cleaning
-def clean_data(name, year,sep=',',var_names=['S1901_C01_001E','S1901_C01_012E','S1901_C01_013E'], col_names=['hh_count','median_hh_inc','mean_hh_inc']):
-    data = pd.read_csv(os.path.join(os.path.expanduser('~'), "OneDrive", "Desktop",'ozone_map_data','income_pop_tables',f'ACSDP5Y{year}.DP05-Data.csv'))
-    data = data.iloc[1:].reset_index(drop=True)
-    data[['tract', 'county', 'state']] = (data['NAME'].str.split(sep, expand=True))
-    data['GEOID'] = (data['GEO_ID'].str.replace(r'^1400000US0', '0', regex=True)).astype(str)
-    data=data.loc[data['county'].str.contains('|'.join(site_group_names.values())),['GEOID','tract', 'county']+var_names]
-    data.columns = ['GEOID','tract','county']+col_names
-    data.to_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','income_tables',f'ACS{name}5Y_{year}_clean.csv'),sep=';', index=False)
+# photuc_shape = shape2020_2023.loc[shape2020_2023['COUNTYFP'].str.contains('|'.join(county_names.keys())),['GEOID','NAMELSAD', 'COUNTYFP','geometry']]
+# photuc_shape.loc[0:,'COUNTYFP']=photuc_shape['COUNTYFP'].apply(lambda x: county_names.get(x))
+# photuc_shape.columns = ['GEOID','tract','county','geometry']
+# photuc_shape=photuc_shape.reset_index(drop=True)
+# photuc_shape['GEOID']=photuc_shape['GEOID'].astype(int)
+# cols=photuc_shape.columns.tolist()
+# ordered=photuc_shape.drop(columns=['geometry']).columns.tolist()+['geometry']
+# new=[item for item in ordered if item in cols]
+# photuc_shape=photuc_shape[new]
 
-def merge_cen_data(gpd, year):
-  inc_data = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','income_tables',f'ACS_ST_5Y_income_{year}_clean.csv'),sep=';')   
-  pop_data = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','income_tables',f'ACSPop5Y_{year}_clean.csv'),sep=';')  
-  add_inc = inc_data[['GEOID','tract','county','hh_count','median_hh_inc','mean_hh_inc']].copy()
-  add_pop = pop_data[['GEOID','tract','county','total_pop','total_hhunits']].copy()
-  joined = pd.merge(add_inc, add_pop, on=['GEOID','tract','county'])
-  joined.columns = ['GEOID','tract','county', f'hhtot{year}', f'medinc{year}', f'mewinc{year}',f'estpop{year}', f'thhinc{year}']
-  return gpd.merge(joined, on='GEOID',copy=False,suffixes=[None,'del'])
+# shape2019['GEOID']=shape2019['GEOID'].astype(int)
 
-county_names = {'013': 'Maricopa County', '019': 'Pima County', '021': 'Pinal County'}
-shape = gpd.read_file('C:\\Users\\ryane\\OneDrive\\Desktop\\ozone_map_data\\tiger_2023_tract.gdb\\tl_2023_04_tract.shp')
-photuc_shape = shape.loc[shape['COUNTYFP'].str.contains('|'.join(county_names.keys())),['GEOID','NAMELSAD', 'COUNTYFP','geometry']]
-photuc_shape.loc[0:,'COUNTYFP']=photuc_shape['COUNTYFP'].apply(lambda x: county_names.get(x))
-photuc_shape.columns = ['GEOID','tract','county','geometry']
-photuc_shape=photuc_shape.reset_index(drop=True)
-photuc_shape['GEOID']=photuc_shape['GEOID'].astype(int)
-for year in ['2020','2021','2022','2023']:
-    photuc_shape=merge_cen_data(photuc_shape, year)
-    photuc_shape=photuc_shape.drop(columns=['tractdel','countydel'])
-cols=photuc_shape.columns.tolist()
-ordered=photuc_shape.drop(columns=['geometry']).columns.tolist()+['geometry']
-new=[item for item in ordered if item in cols]
-photuc_shape=photuc_shape[new]
-photuc_shape=photuc_shape.to_crs(epsg='32612')
-photuc_shape.to_file(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','mapping','photuc_income_pop'), driver='ESRI shapefile',index=photuc_shape.index.tolist(),encoding='utf-8')
+# shape2019=shape2019[['GEOID','NAMELSAD','geometry']].copy()
+# shape2019.columns = ['GEOID','tract','geometry']
+
+# photuc_shape2020_2023=photuc_shape.to_crs(epsg=26949)
+# shape2019=shape2019.to_crs(epsg=26949)
 
 # for i in ['2019','2020','2021']:
-#     clean_data(name='Pop',year=i,sep=',', var_names=['DP05_0001E','DP05_0086E'], col_names=['total_pop','total_hhunits'])    # total pop count and total housing units
+#   clean_data(fname='Pop',bfname=f'ACSDP5Y{i}.DP05-Data.csv',year=i,sep=',', var_names=['DP05_0001E','DP05_0086E'], col_names=['total_pop','total_hhunits'])    # total pop count and total housing units
+#   clean_data(fname='Inc',bfname=f'ACS_ST_5Y_income_{i}.csv',total=True,year=i,sep=',', var_names=['S1901_C01_001E','S1901_C01_012E','S1901_C01_013E'], col_names=['hh_count','median_hh_inc','mean_hh_inc']) 
   
 # for i in ['2022']:
-#     clean_data(name='Pop',year=i,sep=';', var_names=['DP05_0001E','DP05_0088E'], col_names=['total_pop','total_hhunits'])
+#   clean_data(fname='Pop',bfname=f'ACSDP5Y{i}.DP05-Data.csv',year=i,sep=';', var_names=['DP05_0001E','DP05_0088E'], col_names=['total_pop','total_hhunits'])    # shifting varaibles to account for census additions
+#   clean_data(fname='Inc',bfname=f'ACS_ST_5Y_income_{i}.csv',total=True,year=i,sep=';', var_names=['S1901_C01_001E','S1901_C01_012E','S1901_C01_013E'], col_names=['hh_count','median_hh_inc','mean_hh_inc']) 
     
 # for i in ['2023']:
-#     clean_data(name='Pop',year=i,sep=';', var_names=['DP05_0001E','DP05_0091E'], col_names=['total_pop','total_hhunits'])
+#   clean_data(fname='Pop',bfname=f'ACSDP5Y{i}.DP05-Data.csv',year=i,sep=';', var_names=['DP05_0001E','DP05_0091E'], col_names=['total_pop','total_hhunits'])    # shifting varaibles again to account for census additions
+#   clean_data(fname='Inc',bfname=f'ACS_ST_5Y_income_{i}.csv',total=True,year=i,sep=';', var_names=['S1901_C01_001E','S1901_C01_012E','S1901_C01_013E'], col_names=['hh_count','median_hh_inc','mean_hh_inc']) 
 
-# for i in ['2019','2020','2021']:  # income data
-#     clean_income_data(i,';')
+# for i in ['2019']: 
+#   shape2019=merge_cen_data(shape2019, i)
+#   shape2019=shape2019.drop(columns=['tractdel'])
 
-# for i in ['2022','2023']: # add ';' in sep 
-#     clean_income_data(i,';')
+# for i in ['2020','2021','2022','2023']:
+#   photuc_shape2020_2023=merge_cen_data(photuc_shape2020_2023, i)
+#   photuc_shape2020_2023=photuc_shape2020_2023.drop(columns=['tractdel','countydel'])
 
-predictive_model = pd.read_csv(os.path.join(path_to_final_tables,'theory_model_results.csv'),index_col=0)
-predictive_params = pd.read_csv(os.path.join(path_to_final_tables,'theory_goat_model_params.csv'),index_col=0)
-predictive_features = pd.read_csv(os.path.join(path_to_final_tables,'theory_goat_model_features.csv'),index_col=0)
 
+# os.makedirs(os.path.join(mapping_data,'income_pop_2019'),exist_ok=True) 
+# os.makedirs(os.path.join(mapping_data,'income_pop_2020_2023'),exist_ok=True) 
+# shape2019.to_file(os.path.join(mapping_data,'income_pop_2019','income_pop_2019.shp'), driver='ESRI shapefile',index=shape2019.index.tolist(),encoding='utf-8')
+# photuc_shape2020_2023.to_file(os.path.join(mapping_data,'income_pop_2020_2023','income_pop_2020_2023.shp'), driver='ESRI shapefile',index=photuc_shape2020_2023.index.tolist(),encoding='utf-8')
+ 
 site_group_names = {'4013': 'Maricopa', '4019': 'Pima', '4021': 'Pinal'}
 hist_results = pd.read_csv(os.path.join(path_to_final_tables,'hist_model_results_seasons.csv'),index_col=0)
 hist_results['site_group'] = hist_results['site_id'].astype(str).str[:4].map(site_group_names)
@@ -548,7 +558,7 @@ goat_features = pd.read_csv(os.path.join(path_to_final_tables,'goat_model_featur
 goat_features['site_group'] = goat_features['site_id'].astype(str).str[:4].map(site_group_names)
 
 names_dict = {
-    'max_value':'Average Monthly O3',
+    'max_value':'Average Monthly O$_3$',
     'elevation': 'Elevation', 
     'precip': 'Precipitation', 
     'spf_hmdty': 'Specific Humidity', 
@@ -562,13 +572,14 @@ names_dict = {
     'evi' : 'Enhanced Vegetation Index',
     'ntl': 'Nighttime Lights', 
     'ozone': 'Dobson Unit',
-    'du_transformation': 'TOMS/OMI 10km O3', 
+    'du_transformation': 'TOMS/OMI 10km O$_3$', 
     'arsl_idx': 'Aerosol Index',
-    'no2_cnd': 'Tropospheric NO2',
-    'strat_no2': 'Stratospheric NO2',
+    'no2_cnd': 'Tropospheric NO$_2$',
+    'strat_no2': 'Stratospheric NO$_2$', 
+    'surf_no2': 'Surface NO$_2$',
     'cloud_volumn': 'Estimated Cloud Volumn',
     'tco_nd': 'S5P 1km',
-    'tco_temp': 'S5P TCO Temperature',
+    'tco_temp': 'S5P TCO$_3$ Temperature',
     'carmon_cnd' : 'Carbon Monoxide',
     'h2o_cnd' : 'Water Column Density',
     'h2o_energy' : 'Water Column Energy',  
@@ -582,10 +593,13 @@ names_dict = {
     'down_srad_moving_wkly_average' : 'D.S Radiation WkMA',
     'wdsp_moving_wkly_average' : 'Average Wind Speed WkMA',
     'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit WkMA',
-    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O3 WkMA',
+    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O$_3$ WkMA',
     'max_surf_temp_moving_wkly_average' : 'Max Surface Temperature WkMA',
     'tco_nd_moving_wkly_average' : 'S5P 1km WkMA',
     'tco_temp_moving_wkly_average' : 'S5P TCO Temperature WkMA',
+    'Spring':'Spring',
+    'Summer':'Summer',
+    'Winter':'Winter',
     'adaboost_preds':'Adaptive Boost', 
     'gb_preds':'Gradient Boost', 
     'xgrb_preds':'Extreme G. Boost', 
@@ -596,30 +610,47 @@ names_dict = {
     'xgrb_rk_preds':'ExtremeRK', 
     'rf_rk_preds':'RFRK', 
     'mlper_rk_preds':'MLPerRK'}
-# variables=['down_srad', 'down_srad_moving_wkly_average', 'ke_oz', 's5p_ke_oz', 'max_surf_temp', 'vprps_def', 'tco_temp_moving_wkly_average', 'tco_temp', 'strat_no2', 'max_surf_temp_moving_wkly_average', 'vprps_def_moving_wkly_average', 'min_surf_temp', 'bnid', 'tcd_formald', 'tcd_formald_slant', 'du_transformation_moving_wkly_average', 'h2o_energy', 'wdsp_moving_wkly_average', 'h2o_cnd', 'cf', 'tco_nd_moving_wkly_average','ln_cloud_energy','ndvi']
-# df_variable_codes = pd.DataFrame({
-#     "Variable Code": [f"V{i+1:02d}" for i in range(len(variables))],
-#     "Variable Name": [names_dict.get(var, var) for var in variables]
-# })
-# seasonal_variables = ['Spring', 'Summer', 'Winter']
-# seasonal_codes = [f"V{24+i:02d}" for i in range(len(seasonal_variables))]
-# seasonal_names = seasonal_variables 
-# df_seasonal = pd.DataFrame({
-#     "Variable Code": seasonal_codes,
-#     "Variable Name": seasonal_names
-# })
-# df_variable_codes_extended = pd.concat([df_variable_codes, df_seasonal], ignore_index=True)
-# df_variable_codes_extended.to_csv(os.path.join(path_to_final_images,'variable_codes.csv'))
 
+
+# variables=['max_value', 'ndvi', 'down_srad', 'down_srad_moving_wkly_average', 'ke_oz', 's5p_ke_oz', 'max_surf_temp', 'vprps_def', 'tco_temp_moving_wkly_average', 'tco_temp', 'strat_no2', 'max_surf_temp_moving_wkly_average', 'min_surf_temp', 'vprps_def_moving_wkly_average', 'Winter', 'Summer', 'bnid', 'wdsp_moving_wkly_average', 'h2o_energy', 'h2o_cnd', 'du_transformation_moving_wkly_average', 'cf', 'tcd_formald_slant', 'Spring', 'tcd_formald', 'tco_nd_moving_wkly_average', 'no2_cnd', 'spf_hmdty', 'surf_no2', 'du_transformation', 'arsl_idx', 'tco_nd']
+# variable_codes = [f'$y(\\beta)$']+[f"$\\beta_{{{i+1}}}$" for i in range(len(variables)-1)]
+# variable_names = [names_dict.get(name,name) for name in names_dict.keys() if name in variables]
+# df_variable_codes_fin = {
+#     'Variable Code': variable_codes,
+#     'Variable Name': variable_names
+# }
+# df_variable_codes_df = pd.DataFrame(df_variable_codes_fin) # G.O.A.T.24 columns and NDVI should suffice, massive pearson should already be created from model_comparison.
+# site_group_names = {'4013': 'Maricopa', '4019': 'Pima', '4021': 'Pinal'}
+# all_in_project = ['max_value','ndvi']+corr_compare[0:30]['pearson_feature'].values.tolist()
+# all_in_project['site_group'] = all_in_project['site_id'].astype(str).str[:4].map(site_group_names)
+# stats = pd.DataFrame(all_in_project.describe().T).drop('site_id')
+# stats = stats[['mean','std','min','max','50%']]
+# stats.columns = ['mean','std','min','max','median']
+# max_value_stats = goat_results['max_value'].describe()[['mean', 'std', 'min', 'max', '50%']]
+# max_value_stats.index = ['mean', 'std', 'min', 'max', 'median']
+# stats.loc['max_value'] = max_value_stats
+# stats.index = [names_dict.get(name,name) for name in stats.index]
+# stats = stats.rename_axis("Variable Name").reset_index()
+# df_variable_codes_df = df_variable_codes_df.merge(stats, on="Variable Name", how="left")
+# df_variable_codes_df.to_csv(os.path.join(path_to_images, 'variable_dict.csv'))
+# make_corr_plot(all_in_project,all_in_project,'a31_corrs', circ_size=400)
+
+# These create the histograms and will need to be imported to gimp for the overlay
 make_model_figure(hist_results,hist_results,'hist_model_preds','Historical',features=list(hist_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 make_model_figure(modern_results,modern_results,'modern_model_preds','Modern',features=list(modern_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 make_model_figure(theory_results,theory_results,'theory_model_preds','Theoretical',features=list(theory_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 make_model_figure(goat_results,goat_results,'goat_model_preds','G.O.A.T.24',features=list(goat_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 
+# Dataset Corr Plots
 make_corr_plot(hist_results,hist_features,'hist_corrs')    
 make_corr_plot(modern_results,modern_features,'modern_corrs')    
-make_corr_plot(theory_results,theory_features,'theory_corrs')    
-make_corr_plot(goat_results,goat_features,'goat24_corrs')
+make_corr_plot(theory_results,theory_features,'theory_corrs')
+make_corr_plot(goat_results,goat_features,'goat24', circ_size=500)    
+
+# All Used Features Corr Plots
+all_in_project = pd.merge(goat_features,hist_features[['site_id','date','ndvi']])
+all_in_project = pd.merge(all_in_project,modern_features[['site_id','date','tco_nd_moving_wkly_average']])
+make_corr_plot(goat_results,all_in_project,'a25_corrs', circ_size=500)
 
 len(hist_features.drop(columns=['site_id', 'date', 'site_group']).columns)
 len(modern_features.drop(columns=['site_id', 'date', 'site_group']).columns)
@@ -634,7 +665,7 @@ goat_best_model,goat_best_stats=get_metrics(goat_results)
 # All Model Error Stats Graphic
 testing_dfs = [hist_best_stats, modern_best_stats,theory_best_stats, goat_best_stats]
 names = ['H.D.13', 'M.D.13', 'T.D.10', 'G.O.A.T.24']
-fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+fig, axes = plt.subplots(2, 2, figsize=(12, 16))
 axes_flat = axes.ravel()
 for ax, df, name in zip(axes_flat, testing_dfs, names):
     add_error_plot(ax, df, name)

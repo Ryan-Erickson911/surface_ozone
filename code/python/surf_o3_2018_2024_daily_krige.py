@@ -69,8 +69,8 @@ def load_multiband_raster(day,
     pred_features=add_binary_cols(pred_features,temporal_type,day)
   return pred_features, transform, meta, bands
 # Creates a mask to retain features to
-def create_high_res_mask(res=30, 
-                         aoi_path='C:\\Users\\ryane\\Documents\\Github\\UCBMasters\\data\\study_area\\study_area.shp',
+def create_high_res_mask(res=30,  
+                         aoi_path=os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data","study_area","study_area.shp"),
                          file_name = 'mask_30m',
                          output_folder= str):
   """
@@ -86,7 +86,7 @@ def create_high_res_mask(res=30,
     with rio.open(out_path) as mersk:
       bool_mask = mersk.read(1).astype(bool)
     return out_path, bool_mask
-  pred_extent = gpd.read_file(aoi_path).to_crs(epsg=32612)
+  pred_extent = gpd.read_file(aoi_path).to_crs(epsg=26949)
   minx, miny, maxx, maxy = pred_extent.total_bounds
   width = int((maxx - minx) / res)
   height = int((maxy - miny) / res)
@@ -94,7 +94,7 @@ def create_high_res_mask(res=30,
   shapes = [(geom, 1) for geom in pred_extent.geometry]
   raster = rasterize(shapes,out_shape=(height, width),transform=transform,fill=0,dtype='uint8')
   bool_mask = raster.astype(bool)
-  with rio.open(out_path,'w',driver='GTiff',height=height,width=width,count=1,dtype='uint8',crs='EPSG:32612',transform=transform) as dst:
+  with rio.open(out_path,'w',driver='GTiff',height=height,width=width,count=1,dtype='uint8',crs='EPSG:26949',transform=transform) as dst:
     dst.write(raster, 1)
   return out_path, bool_mask
 # Get Lats and Longs
@@ -105,23 +105,23 @@ def get_lat_lon(transform, height, width):
     y_coords = np.array(y_coords)
     return y_coords, x_coords
 # Quick Maps of Features
-def display_raster_bands(day=str,path_to_features=str, col_nms=str,title=str,stylex=5,styley=2):
+def display_raster_bands(day=str,path_to_features=str, col_nms=str,title=str,stylex=3,styley=3):
   names_dict = {
     'max_value':'Average Monthly O3',
-    'ln_cloud_energy': 'Estimated Cloud Energy',
-    'vprps_def': 'Mean Vapor Pressure Deficit',
-    'strat_no2': 'Stratospheric NO2',
-    'ndvi': 'Normalized Difference Vegetation Index', 
     's5p_ke_oz': 'S5P Kinetic Energy',
+    'vprps_def': 'Mean Vapor Pressure Deficit',
+    'max_surf_temp': 'Maximum Surface Temperature',
+    'ndvi': 'NDVI', 
+    'strat_no2': 'Stratospheric NO2',
     'bnid' : 'Burn Index',
     'wdsp_moving_wkly_average' : 'Wind Velocity (WKA)',
+    'surf_no2': 'Surface NO$_2$',
+    'cf': 'Cloud Fraction',
     'Winter': 'Winter',
     'Spring': 'Spring',
-    'Summer': 'Summer',
-    'Fall': 'Fall'}
-  feature_paths = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data","results","feature_plots")
-  if not os.path.exists(feature_paths):
-    os.makedirs(feature_paths, exist_ok=True)
+    'Summer': 'Summer'}
+  feature_paths = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "writing","maps","feature_plots")
+  os.makedirs(feature_paths, exist_ok=True)
   with rio.open(path_to_features) as fts:
     n_bands = len(fts.descriptions)
     fig, axes = plt.subplots(stylex, styley, figsize=(10,16))
@@ -161,12 +161,11 @@ def plot_surf_o3(day,path):
 def add_binary_cols(df, time_type, date=str):
   dte = pd.to_datetime(date).month
   og_cols = list(df.columns.values)
-  seas = ['Winter','Spring','Summer','Fall']
+  seas = ['Winter','Spring','Summer']
   months_list=[]
   df['Winter'] = False
   df['Spring'] = False
   df['Summer'] = False
-  df['Fall'] = False
   for i in range(1, 13):
     df[f'month_{i}'] = False
     months_list.append(f'month_{i}')
@@ -177,8 +176,6 @@ def add_binary_cols(df, time_type, date=str):
     df['Spring'] = True
   elif dte in [6, 7, 8]:
     df['Summer'] = True
-  elif dte in [9, 10, 11]:
-    df['Fall'] = True
   if time_type=='monthly':
     out_df=df[og_cols+months_list]
   elif time_type=='seasonal':
@@ -234,7 +231,7 @@ def get_wka_vars(day, oz_path, mask_bools, var_source, band=int, path=str):
   return oz_path
 # Making Multibanded Raster for Predictions
 def get_feature_dict(col_names,
-                     data_path=os.path.join(os.path.expanduser('~'), 'Documents','Github','UCBMasters','data','tifs')):
+                     data_path=os.path.join(os.path.expanduser('~'), 'Documents','Github','surface_ozone','data','tifs')):
   """  
   SMaRK Necessary
   -------
@@ -285,47 +282,46 @@ def get_feature_dict(col_names,
 # Adds Kinetic Energy Gas Law to existing feature raster with proper variables
 def get_ke_est(day, outpath, mask): # need to add gridmet as independant option
   # path_to_tomi_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 'ozone10km', 'daily')
-  path_to_s5p_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 's5p', 'o_3_1km', 'daily')
-  path_to_cld_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 's5p', 'clouds', 'daily')
-  path_to_gmet_imgs = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 'gridmet', 'daily')
+  path_to_s5p_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 's5p', 'o_3_1km', 'daily')
+  path_to_no2_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 's5p', 'no2', 'daily')
+  path_to_cld_imagery = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 's5p', 'clouds', 'daily')
+  path_to_gmet_imgs = os.path.join(os.path.expanduser('~'), 'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 'gridmet', 'daily')
   # path_to_tomi = os.path.join(path_to_tomi_imagery, next((tom for tom in os.listdir(path_to_tomi_imagery) if day in tom), None))
   path_to_s5p = os.path.join(path_to_s5p_imagery, next((s5p for s5p in os.listdir(path_to_s5p_imagery) if day in s5p), None))
+  path_to_no2 = os.path.join(path_to_no2_imagery, next((no2 for no2 in os.listdir(path_to_no2_imagery) if day in no2), None))
   path_to_cld = os.path.join(path_to_cld_imagery, next((cld for cld in os.listdir(path_to_cld_imagery) if day in cld), None))
   path_to_gmet = os.path.join(path_to_gmet_imgs, next((gm for gm in os.listdir(path_to_gmet_imgs) if day in gm), None))
   with rio.open(outpath, 'r+') as dst:
-    base_data   = dst.read()
-    semi_names  = list(dst.descriptions)
-    profile     = dst.profile.copy()
+    base_data = dst.read()
+    semi_names = list(dst.descriptions)
+    profile = dst.profile.copy()
     height, width = dst.height, dst.width
   profile.update(count=base_data.shape[0] + 2,dtype='float32',nodata=np.nan)
   # with rio.open(path_to_tomi) as tomi:
-  #   ozone = tomi.read(1, out_shape=(height, width), resampling=Resampling.bilinear).astype('float32')
+  #   ozone = tomi.read(1, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
   with rio.open(path_to_s5p) as sent5p:
     tco_nd = sent5p.read(1, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
     tco_temp = sent5p.read(2, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+  with rio.open(path_to_no2) as no2:
+    no2_cnd = no2.read(1, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+    strat_no2 = no2.read(2, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
   with rio.open(path_to_cld) as clouds:
-    cth = clouds.read(3, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
-    cbh = clouds.read(5, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
-    cbp = clouds.read(4, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
-    ctp = clouds.read(2, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+  #   cth = clouds.read(3, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+  #   cbh = clouds.read(5, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+  #   cbp = clouds.read(4, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+  #   ctp = clouds.read(2, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
+    cf = clouds.read(1, out_shape=(height, width), resampling=Resampling.cubic).astype('float32')
   with rio.open(path_to_gmet) as gmt:
-    down_srad = gmt.read(3, out_shape=(height, width), masked=True, resampling=Resampling.bilinear).astype('float32')
-    # max_surf_temp = gmt.read(5, out_shape=(height, width), masked=False, fill_value=np.nan, resampling=Resampling.bilinear).astype('float32')
+    down_srad = gmt.read(3, out_shape=(height, width), masked=True, resampling=Resampling.cubic).astype('float32')
+    # max_surf_temp = gmt.read(5, out_shape=(height, width), masked=True, resampling=Resampling.cubic).astype('float32')
   # ke_oz = (down_srad * (ozone * 0.00021441) * max_surf_temp * 0.08206)
   s5p_ke_oz = (down_srad * tco_nd * tco_temp * 0.08206)
-  cloud_radius = ((cth-cbh)/2)
-  cloud_radius = np.where(np.nan,cloud_radius,0.000001)
-  ln_cloud_energy = np.log10(((cbp-ctp)*0.75)+0.0000001/(cloud_radius+0.0000001))
-  ln_cloud_energy = np.where(np.nan,ln_cloud_energy, 0)
-  ln_cloud_energy = np.where(np.inf,ln_cloud_energy, 1)
-  ln_cloud_energy = np.where(-np.inf,ln_cloud_energy, 1)
-  ln_cloud_energy = np.where(ln_cloud_energy<4.6,ln_cloud_energy, 4.4)
-  ln_cloud_energy = np.where(ln_cloud_energy>-2,ln_cloud_energy, -1.5)
-  profile.update(count=base_data.shape[0] + 2, dtype='float32')
+  surf_no2 = no2_cnd - strat_no2*1000 #remove 1000###remove 1000#######remember to change back ######remove 1000####remember to change back#####remember to change back####remove 1000####remember to change back#######remember to change back#######remove 1000########remember to change back###############################################
   if isinstance(mask, np.ndarray) and mask.any():
     # ke_oz = np.where(mask, ke_oz, np.nan)
     s5p_ke_oz = np.where(mask, s5p_ke_oz, np.nan)
-    ln_cloud_energy = np.where(mask, ln_cloud_energy, np.nan)
+    cf = np.where(mask, cf, np.nan)
+    surf_no2 = np.where(mask, surf_no2, np.nan)
   with rio.open(outpath, 'w', **profile) as out_raster:
     for i, col in enumerate(semi_names):
       out_raster.write(base_data[i], i + 1)
@@ -334,8 +330,8 @@ def get_ke_est(day, outpath, mask): # need to add gridmet as independant option
     # out_raster.set_band_description(len(semi_names) + 1, 'ke_oz')
     out_raster.write(s5p_ke_oz, len(semi_names) + 1)
     out_raster.set_band_description(len(semi_names) + 1, 's5p_ke_oz')
-    out_raster.write(ln_cloud_energy, len(semi_names) + 2)
-    out_raster.set_band_description(len(semi_names) + 2, 'ln_cloud_energy')
+    out_raster.write(surf_no2, len(semi_names) + 2)
+    out_raster.set_band_description(len(semi_names) + 2, 'surf_no2')
   return outpath
 # makes a predictive grid containing all features except boolean based dummy features such as seasonal features. 
 def mk_pred_grid(day=str,dep_feats=list,msk=False,msk_file_nme=None,res=30):
@@ -357,7 +353,7 @@ def mk_pred_grid(day=str,dep_feats=list,msk=False,msk_file_nme=None,res=30):
   if not isinstance(day, str) or not isinstance(dep_feats, list):
     raise ValueError("Expected `day` as str and `dep_feats` as list")
   sat_vars, rem_vars = get_feature_dict(dep_feats)
-  grid_folder = os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'UCBMasters', 'data', 'tifs', 'predicted_grids')
+  grid_folder = os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'surface_ozone', 'data', 'tifs', 'predicted_grids')
   mask_folder = os.path.join(os.path.expanduser('~'),'Documents', 'Github', 'surface_ozone', 'data', 'study_area', 'mask')
   os.makedirs(grid_folder, exist_ok=True)
   output_path = os.path.join(grid_folder, f'photuc_surfo3_{day}.tif')
@@ -396,16 +392,16 @@ def mk_pred_grid(day=str,dep_feats=list,msk=False,msk_file_nme=None,res=30):
                              dst_height=base.height,
                              src_nodata=src.nodata,
                              dst_nodata=np.nan,
-                             resampling=Resampling.bilinear)
+                             resampling=Resampling.cubic)
           if feature_name=='ndvi':
             dest=dest/10000
             dest=np.where(dest<0,0,dest)
-          if feature_name=='bnid':
-            dest=np.where(dest<22,0,dest)
-            dest=np.where(dest>148.45,77,dest)
-          if feature_name=='vprps_def':
-            dest=np.where(dest>6.84,5.43,dest)
-            dest=np.where(dest<0,0,dest)
+          # if feature_name=='bnid':
+          #   dest=np.where(dest<22,0,dest)
+          #   dest=np.where(dest>148.45,77,dest)
+          # if feature_name=='vprps_def':
+          #   dest=np.where(dest>6.84,5.43,dest)
+          #   dest=np.where(dest<0,0,dest)
           dest = np.where(mask_bools,dest,np.nan)
           out_raster.write(dest, i)
           out_raster.set_band_description(i, feature_name)
@@ -435,12 +431,14 @@ def SMaRK_raster_predictions(day,
   path : `str` on user machine to the prediction set. Seperate files are used for the Statiistical Model and Residual Kriging.
                  
   """
-  final_path = os.path.join(os.path.expanduser('~'), 'Documents','Github','UCBMasters','data','results','final_surfo3')
+  final_path = os.path.join(os.path.expanduser('~'), 'Documents','Github','surface_ozone','writing','maps')
   os.makedirs(final_path, exist_ok=True)
   ml_path = os.path.join(final_path, 'ml_outputs')
   rk_path = os.path.join(final_path,'rk_outputs')
+  smark_path = os.path.join(final_path,'smark_outputs')
   os.makedirs(ml_path, exist_ok=True)
   os.makedirs(rk_path, exist_ok=True)
+  os.makedirs(smark_path, exist_ok=True)
   print(f"Predicting for {day}:") 
   name = get_metrics(predictive_model).split("_", 1)[0]
   model_params = predictive_params.reset_index(drop=True).at[0, f'{name}_params']
@@ -453,9 +451,9 @@ def SMaRK_raster_predictions(day,
     'rf':RandomForestRegressor(random_state=42,n_jobs=-1),
     'mlper':MLPRegressor(activation='tanh',solver='adam',early_stopping=True,random_state=42)}
   use_this = clone(choices[name]).set_params(**ast.literal_eval(model_params))
-  print(f'  Fitting Statistical Model: {use_this}')
+  print(f'  Fitting Statistical Model: {name}')
   scv_best = use_this.fit(X=x_dat, y=y_dat)
-  mask_path = os.path.join(os.path.expanduser('~'),'Documents','Github','UCBMasters','data','study_area','study_area.shp')
+  mask_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','data','study_area','study_area.shp')
   print('  Loading raster...')
   feature_raster, mask_array=mk_pred_grid(day,dep_feats=list(x_dat.columns.values),msk=mask_path,msk_file_nme='photuc_mask250m',res=250)
   processed_arrays, transform, metadata, col_names = load_multiband_raster(day,temporal_type='seasonal',image_path=feature_raster)
@@ -469,9 +467,9 @@ def SMaRK_raster_predictions(day,
   final_raster_array=ml_surfo3.to_numpy().reshape((rows,cols))
   ml_output_path = os.path.join(ml_path,f'surf_o3_mlpreds_{day}.tif')
   metadata.update(count=1)
-  with rio.open(ml_output_path, 'w', **metadata) as dst:
+  with rio.open(ml_output_path, 'w+', **metadata) as dst:
     dst.write(final_raster_array.astype(np.float32), 1)
-  print("  Finished statistical model predicitons")
+  print("  Finished statistical model predictions")
   if plot_features:
     try:
       display_raster_bands(day, feature_raster,col_names, title="Dependent Variables")
@@ -485,51 +483,47 @@ def SMaRK_raster_predictions(day,
     'nlags':[4,6,8],
     'functional_drift': [drift_funcFT]}
   training_points = predictive_model[predictive_model['date']==day][['lat','long','max_value',f'{name}_preds']]
-  transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32612", always_xy=True)
-  xs, ys = transformer.transform(training_points['long'].values, training_points['lat'].values)
-  rows_cols = [riotransform.rowcol(transform, x, y) for x, y in zip(xs, ys)]
-  vals = []
-  height, width = final_raster_array.shape
-  for row, col in rows_cols:
-    if 0 <= row < height and 0 <= col < width:
-      val = final_raster_array[row, col]
-      vals.append(val if not np.isnan(val) else np.nan)
-    else:
-      vals.append(np.nan)
-  training_points[f'{name}_preds'] = vals
-  krige_cv=GridSearchCV(Krige(method= "universal",coordinates_type="euclidean"),param_grid=rk_params)
-  y_rk=training_points['max_value']-training_points[f'{name}_preds']
-  transformed_training=np.array(rows_cols,dtype=float)
-  best_krige=krige_cv.fit(X=transformed_training,y=y_rk)
-  uk_model=UK(x=transformed_training[:, 0],y=transformed_training[:, 1],z=y_rk,**best_krige.best_params_)
-  try:
-    with rio.open(ml_output_path) as fin: 
-      out_meta = metadata.copy()
+  training_gdf = gpd.GeoDataFrame(training_points,geometry=gpd.points_from_xy(training_points["long"], training_points["lat"]),crs="EPSG:4326" )
+  training_gdf=training_gdf.to_crs(crs=26949)
+  with rio.open(ml_output_path) as raster:
+    data_array = raster.read(1)
+    for index, row in training_gdf.iterrows():
+      try:
+        row_val, col_val = raster.index(row.geometry.x, row.geometry.y)
+        value = data_array[row_val, col_val]
+        training_gdf.at[index, f'{name}_preds'] = value
+      except Exception as e:
+        print(f'Extraction error occurred at raster index {index}: {e}')
+    krige_cv=GridSearchCV(Krige(method= "universal",coordinates_type="euclidean"),param_grid=rk_params)
+    y_rk=training_gdf['max_value']-training_gdf[f'{name}_preds']
+    rows_cols = np.array(list(zip(training_gdf.geometry.x,training_gdf.geometry.y)),dtype=float)
+    transformed_training=np.array(rows_cols,dtype=float)
+    best_krige=krige_cv.fit(X=transformed_training,y=y_rk)
+    uk_model=UK(x=transformed_training[:, 0],y=transformed_training[:, 1],z=y_rk,**best_krige.best_params_)
+    try:
       out_raster = os.path.join(rk_path,f'surf_o3_rkpreds_{day}.tif')
-      smark_path = os.path.join(final_path,f'surf_o3_{day}.tif')
-      rx = np.arange(width, dtype=float)
-      ry = np.arange(height, dtype=float)
-      z1, _ = uk_model.execute('grid',rx,ry)
+      smark_raster = os.path.join(smark_path,f'surf_o3_{day}.tif')
+      rx = np.arange(rows)
+      ry = np.arange(cols)
+      rows_grid, cols_grid = np.meshgrid(rx, ry, indexing='ij')
+      prx, pry =  riotransform.xy(transform, rows_grid, cols_grid)
+      z1, _ = uk_model.execute('points',prx,pry)
       pred_2d = z1.reshape((rows, cols))
       data = np.where(mask_array, pred_2d, np.nan)
       final_rk_array = final_raster_array+data
-      out_meta.update({"count":1,"dtype":str(pred_2d.dtype),"compress": "lzw"})
-      with rio.open(out_raster,'w+',**out_meta) as fin:
+      with rio.open(out_raster,'w',**metadata) as fin:
         fin.write(data,1)
-      with rio.open(smark_path, 'w+', **metadata) as fin_rk:
+      with rio.open(smark_raster, 'w', **metadata) as fin_rk:
         fin_rk.write(final_rk_array.astype(np.float32), 1)
-    print('  RK enhancements made, SM raster has been updated.')
-  except Exception as e:
-    print(f"  Universal Kriging failed, printing model predictions")
-    smark_path = os.path.join(final_path,f'surf_o3_{day}.tif')
-    with rio.open(smark_path, 'w+', **metadata) as fin:
-      fin.write(final_raster_array.astype(np.float32), 1)
+      print('  RK enhancements made, SM raster has been updated.')
+    except Exception as e:
+      print(f"  Universal Kriging failed, printing model predictions: {e}")
   return print(f'  SMaRK Prediction exported for {day}')
 ###########################################################################
 # Creating paths and main variables
-predictive_model = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','final','theory_model_results.csv'),index_col=0)
-predictive_params = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','final','theory_goat_model_params.csv'),index_col=0)
-predictive_features = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "data",'tables','final','theory_goat_model_features.csv'),index_col=0)
+predictive_model = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets','theory_model_results.csv'),index_col=0)
+predictive_params = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets','theory_goat_model_params.csv'),index_col=0)
+predictive_features = pd.read_csv(os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets','theory_goat_model_features.csv'),index_col=0)
 predictive_model['date'] = pd.to_datetime(predictive_model['date'], format='%Y-%m-%d')
 predictive_params['date'] = pd.to_datetime(predictive_params['date'], format='%Y-%m-%d')
 # Create desired Temporal Ranges
@@ -540,6 +534,7 @@ days_jun_2022 = pd.date_range("2022-06-01", "2022-06-30").strftime("%Y-%m-%d").t
 days_apl_2023 = pd.date_range("2023-04-01", "2023-04-30").strftime("%Y-%m-%d").tolist()
 # Create rasters with SMaRK method
 for yay in days_jan_2019:
+  print(yay)
   SMaRK_raster_predictions(yay, predictive_model,predictive_features,predictive_params,plot_features = True)
 for yay in days_oct_2020:
   SMaRK_raster_predictions(yay, predictive_model,predictive_features,predictive_params,plot_features = True)

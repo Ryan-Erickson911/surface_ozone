@@ -1,6 +1,8 @@
 # High-Resolution Surface Ozone Package
 
-A python package for surface ozone modelling at spatial resolutions from 50m to 1km resolution. Updates are being made for R and JavaScript based languages. 
+A python package for surface ozone modelling at spatial resolutions from 50m to 1km resolution. Updates are being made for R and JavaScript based languages. As this is meant to downloaded across numerous states, the tifs folder will remain empty. This is meant to ensure each user has their own seperate images while keeping the required space on Git low. Images used in the thesis which are not modelled outputs (ArcGIS Pro images, figures, and tables) are used to depict the expected results from the current AOI. Expansion of this representation is in progress. 
+
+Note: Any comments denoted # type: ignore are implementeations for Pylance to ignore a global/strict variable assiagnment types and will be addressed at a later update. 
 
 ## Environment Initiation
 
