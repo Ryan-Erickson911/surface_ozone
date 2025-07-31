@@ -104,7 +104,7 @@ def make_model_figure(predictive_model,predictive_features,fname,title,features=
         ax.set_xlabel('')
         ax.set_ylabel('')
         ax.grid(True)
-    fig.suptitle(f'Surface O$_{3}$ Concentrations\n{title} Dataset Predictions',fontsize=16)
+    fig.suptitle(f'Surface O$_{3}$ Concentrations\n{title} Dataset Predictions',fontsize=12)
     legend_ax=fig.add_subplot(gs[4,1])
     legend_ax.axis('off')
     legend_ax.legend(
@@ -112,8 +112,8 @@ def make_model_figure(predictive_model,predictive_features,fname,title,features=
         title='County',
         loc='center')
     plt.tight_layout()
-    fig.savefig(os.path.join(path_to_final_images,f'{fname}.png'))
     plt.show()
+    fig.savefig(os.path.join(path_to_final_images,f'{fname}.png'))
 def get_metrics(df):
   predictive_cols=[col for col in df.columns if col.endswith('_preds')]
   all_metrics=[]
@@ -274,7 +274,7 @@ def plot_model_rk_layout(
   features_path=os.path.join(feature_stack_path,next(f for f in os.listdir(feature_stack_path) if day in f))
   fig_width=8.5
   fig_height=10.0
-  specs=[(0.5,4.45,3.5,3.5),(4.35,4.45,3.5,3.5),(0.375,0.45,7.7,3.7)]
+  specs=[(2,3.25,2,2),(4.5,3.25,2,2),(1.5,0.45,5.5,2.5)]# 0.02, 0.15
   fig=plt.figure(figsize=(fig_width,fig_height))
   axes=[]
   for (left_in,top_in,width_in,height_in) in specs:
@@ -301,13 +301,13 @@ def plot_model_rk_layout(
       with memfile.open(**kwargs) as dst:
         reproject(source=r1,src_transform=src1.transform,destination=rio.band(dst,1),src_crs=src1.crs,dst_transform=transform,dst_crs=target_crs,resampling=Resampling.nearest)
         data1=dst.read(1).astype(np.float32)
-        im1=ax1.imshow(data1,cmap='twilight',aspect='auto')
-    ax1.set_title("Model Predictions",fontsize=10)
+        im1=ax1.imshow(data1,cmap='Blues',aspect='auto')
+    ax1.set_title("Estimated Complex Trend",fontsize=10)
     ax1.axis('off')
   with rio.open(features_path) as src2:
     transform,width,height=calculate_default_transform(src2.crs,target_crs,src2.width,src2.height,*src2.bounds)
     kwargs=src2.meta.copy()
-    kwargs.update({'crs': target_crs,'transform': transform,'width': width,'height': height,'dtype': 'float32'})
+    kwargs.update({'crs':target_crs,'transform':transform,'width':width,'height':height,'dtype':'float32'})
     with rio.io.MemoryFile() as memfile:
       with memfile.open(**kwargs) as dst:
         for i in range(1,src2.count + 1):
@@ -350,15 +350,25 @@ def plot_model_rk_layout(
         im2=ax2.imshow(data3,cmap='RdBu_r',aspect='auto')
     ax2.set_title("RK Appriximation",fontsize=10)
     ax2.axis('off')
-  cax1=fig.add_axes([0.05,ax1.get_position().y0,0.01,ax1.get_position().height*0.975])
-  cax2=fig.add_axes([0.925,ax2.get_position().y0,0.01,ax2.get_position().height*0.975])
+  cax1=fig.add_axes([0.225,ax1.get_position().y0+((ax1.get_position().height-ax1.get_position().height*0.925)/2),0.005,ax1.get_position().height*0.95])
+  cax2=fig.add_axes([0.77,ax2.get_position().y0+((ax2.get_position().height-ax2.get_position().height*0.925)/2),0.005,ax2.get_position().height*0.95])
+  cax3=fig.add_axes([0.165,ax3.get_position().y0+((ax3.get_position().height-ax3.get_position().height*0.925)/2),0.005,ax3.get_position().height*0.925])
   cbar1=plt.colorbar(im1,cax=cax1)
   cbar2=plt.colorbar(im2,cax=cax2)
+  cbar3=plt.colorbar(im3,cax=cax3)
   cbar1.ax.yaxis.set_ticks_position('left') 
   cbar1.ax.yaxis.set_label_position('left') 
+  cbar1.ax.yaxis.set_label_text(f'O$_3$ (ppb)')
   cbar1.ax.tick_params(labelsize=8)
   cbar2.ax.tick_params(labelsize=8)
-  plt.suptitle(f"Map 4.1",fontsize=12,y=0.985)
+  cbar2.ax.yaxis.set_label_text(f'Error (ppb)')
+  cbar3.ax.tick_params(labelsize=8)
+  cbar3.ax.yaxis.set_ticks([0,1],['Min','Max']) 
+  cbar3.ax.yaxis.set_ticks_position('left') 
+  cbar3.ax.yaxis.set_label_position('left') 
+  cbar3.ax.yaxis.set_label_text(f'Scaled $\\beta_i$ (unitless)', fontsize=10)
+  cbar3.ax.yaxis.labelpad = -16
+  plt.suptitle(f"Map 4.11",fontsize=12,y=0.985)
   plt.savefig(final_output_path,dpi=300)
   plt.close()
 def smark_plot(
@@ -411,15 +421,16 @@ def smark_plot(
   hillshade=ls.shade(clipped_elev,cmap=cm.Greys,vert_exag=0.00001137,dx=250,dy=250)
   height,width=clipped_elev.shape
   extent=[clipped_transform[2],clipped_transform[2]+clipped_transform[0]*width,clipped_transform[5]+clipped_transform[4]*height,clipped_transform[5]]
-  fig,ax=plt.subplots(figsize=(8.5,8.5))
+  fig,ax=plt.subplots(figsize=(6,5.5))
   ozone_img=ax.imshow(clipped_ozone,cmap='Blues',extent=extent)
-  fig.colorbar(ozone_img,ax=ax,fraction=0.046,pad=0.04,label=f'O$_3$ (ppb)')
+  fig.colorbar(ozone_img,ax=ax,fraction=0.025,pad=0.02,label=f'O$_3$ (ppb)')
+  ax.tick_params(labelsize=8)
   photuc.boundary.plot(ax=ax,edgecolor='black',linewidth=0.75,alpha=0.5)
   photuc.boundary.plot(ax=ax,edgecolor=photuc['color'],linewidth=0.65,alpha=0.65)
-  legend_patches=[Patch(color=color,label=county) for county,color in color_map.items()]
-  ax.legend(handles=legend_patches,title="Counties",loc='lower left',frameon=True,framealpha=0.9,facecolor='white',edgecolor='black')
-  ax.text(0.98,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=10,family='monospace',bbox=dict(boxstyle='round,pad=0.5',facecolor='white',edgecolor='black',alpha=0.9))
-  ax.set_title(f"Estimated Surface O$_3$ Concentrations",loc='center',fontsize=12)
+  legend_patches=[Patch(edgecolor=color,fill=False,label=county) for county,color in color_map.items()]
+  ax.legend(handles=legend_patches,title="Counties",loc='lower left',frameon=True,framealpha=0.9,facecolor='white',edgecolor='black',fontsize=8,title_fontsize=8,labelspacing=0.25)
+  ax.text(0.98,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=8,bbox=dict(boxstyle='round,pad=0.5',facecolor='white',edgecolor='black',alpha=0.9))
+  ax.set_title(f"Predicted Surface O$_3$ Concentrations",loc='center',fontsize=10)
   ax.set_axis_off()
   fig.tight_layout()
   fig.savefig(fin,dpi=300)
@@ -644,7 +655,7 @@ for ax,col in zip(axes,selected.columns):
     ax.set_yticks([])
 fig.suptitle("Boxplots of Actual and Model Predictions",fontsize=16)
 fig.tight_layout()
-fig.savefig
+fig.savefig()
 plt.show()
 
 # Daily Posters
@@ -654,6 +665,7 @@ days_jul_2021=pd.date_range("2021-07-01","2021-07-31").strftime("%Y-%m-%d").toli
 days_jun_2022=pd.date_range("2022-06-01","2022-06-30").strftime("%Y-%m-%d").tolist()
 days_apl_2023=pd.date_range("2023-04-01","2023-04-30").strftime("%Y-%m-%d").tolist()
 for yay in days_jan_2019:
+  print(yay)
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
 for yay in days_oct_2020:
@@ -669,28 +681,58 @@ for yay in days_apl_2023:
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
 
-from PIL import Image
+from PIL import Image, ImageDraw
+
 path_to_model_rk=os.path.join(path_to_images,"prediction_displays","model_rk")
 path_to_surface_ozone=os.path.join(path_to_images,"prediction_displays","surface_ozone")
+path_to_posters=os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","writing",'maps','final_posters')
+os.makedirs(path_to_posters,exist_ok=True)
 
-day="2019-01-01"
-model_rk=os.path.join(path_to_model_rk,f'smark_{day}.png')
-surface_ozone= os.path.join(path_to_surface_ozone,f'ozone_{day}.png')
+model_rk=os.path.join(path_to_model_rk,f'smark_{yay}.png')
+surface_ozone= os.path.join(path_to_surface_ozone,f'ozone_{yay}.png')
 
 top_img=Image.open(model_rk)
 bottom_img=Image.open(surface_ozone)
-
-# Resize to the same width if needed
-width=max(top_img.width,bottom_img.width)
-top_img=top_img.resize((width,int(top_img.height*width / top_img.width)))
-bottom_img=bottom_img.resize((width,int(bottom_img.height*width / bottom_img.width)))
-
-# Stack vertically
-total_height=top_img.height + bottom_img.height-550
-stacked_img=Image.new("RGB",(width,total_height))
+total_height=3300
+stacked_img=Image.new("RGB",(2550,total_height), color='white')
 stacked_img.paste(top_img,(0,0))
-stacked_img.paste(bottom_img,(0,top_img.height-550))
-plt.figure(figsize=(8.5,11))
+stacked_img.paste(bottom_img,(375,1625))
+draw = ImageDraw.Draw(stacked_img)
+page_number = "A.29"
+font_size = 8
+bbox = draw.textbbox((0, 0), page_number)
+text_width = bbox[2] - bbox[0]
+text_height = bbox[3] - bbox[1]
+x_text = (2550 - text_width) // 2
+y_text = total_height - text_height-25
+draw.text((x_text, y_text), page_number, fill="black",)
+plt.figure(figsize=(8.5,11),dpi=300)
 plt.imshow(stacked_img)
 plt.axis('off')
+stacked_img.save(f"{os.path.join(path_to_posters,f'poster_{yay}.png')}", dpi=(300, 300))
 plt.show()
+
+from docx import Document
+from docx.shared import Inches
+import os
+
+# Paths
+doc_path = "path/to/your/original.docx"
+image_folder = "path/to/your/pngs"
+output_path = "path/to/output_with_images.docx"
+
+# Load existing document
+doc = Document(doc_path)
+
+# Set image size to 8.5 x 11 inches
+page_width = Inches(8.5)
+page_height = Inches(11)
+
+# Append each PNG
+image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.png')])
+for image_file in image_files:
+    doc.add_page_break()
+    doc.add_picture(os.path.join(image_folder, image_file), width=page_width, height=page_height)
+
+# Save the updated document
+doc.save(output_path)
