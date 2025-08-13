@@ -20,6 +20,9 @@ from matplotlib.colors import LinearSegmentedColormap as LSC
 from datetime import datetime
 from sklearn.neural_network import MLPRegressor
 import random
+import matplotlib.patheffects as pe
+import textwrap
+plt.rcParams['font.family'] = 'Century Schoolbook'
 random.seed(4199709112)
 ###################################################################################################
 # Main Data
@@ -38,36 +41,37 @@ for site_id, site_name in site_series.items():
         site_dict[site_id] = site_name.title()
 site_dict[40191030]='Green Valley' # (og: 'Green Valley  -Replaces Site 0007 245 W Esperanza')
 site_dict[40139702]='Salt River Recreation Area' # (og: 'Blue Point-Sheriff Station-Tonto Nf-Salt River Recreation Area')
-names_dict = {
-    'max_value':'Average Monthly O3',
+names_dict={
+    'max_value':f'Average Daily Max O$_3$',
     'elevation': 'Elevation', 
     'precip': 'Precipitation', 
     'spf_hmdty': 'Specific Humidity', 
-    'down_srad': 'Downward Shortwave\n(D.S) Radiation', 
-    'min_surf_temp': 'Min Surface Temperature', 
-    'max_surf_temp': 'Max Surface Temperature',
+    'down_srad': 'Downward Shortwave Radiation', 
+    'min_surf_temp': 'Min Surface Temp.', 
+    'max_surf_temp': 'Max Surface Temp.',
     'wdsp': 'Average Wind Speed',
     'bnid': 'Burn Index', 
-    'vprps_def': 'Mean Pressure Deficit', 
+    'vprps_def': 'Vapor Pressure Deficit', 
     'ndvi': 'NDVI', 
     'evi' : 'Enhanced Vegetation Index',
     'ntl': 'Nighttime Lights', 
     'ozone': 'Dobson Unit',
-    'du_transformation': 'TOMS/OMI 10km O3', 
+    'du_transformation': f'TOMS/OMI 10km O$_3$', 
     'arsl_idx': 'Aerosol Index',
-    'no2_cnd': 'Tropospheric NO2',
-    'strat_no2': 'Stratospheric NO2',
-    'surface_no2': 'Surface NO2',
+    'no2_cnd': f'Tropospheric NO$_2$',
+    'strat_no2': f'Stratospheric NO$_2$',
+    'surf_no2': f'Surface NO$_2$',
     'cloud_volumn': 'Estimated Cloud Volumn',
     'cloud_pressure': 'Estimated Cloud Pressure',
-    'tco_nd': 'S5P 1km',
-    'tco_temp': 'S5P TCO Temperature',
-    'carmon_cnd' : 'Carbon Monoxide',
+    'tco_nd': f'S5P 1km O$_3$',
+    'tco_temp': f'S5P TCO$_3$ Temperature',
+    'carmon_cnd' : 'Carbon Monoxide (CO)',
     'h2o_cnd' : 'Water Column Density',
     'h2o_energy' : 'Water Column Energy',  
-    'tcd_formald' : 'Formaldehyde', 
-    'tcd_formald_slant' : 'Formaldehyde Slant Density', 
-    'tcd_formald_amf' : 'Formaldehyde Air Mass Factor', 
+    'tcd_formald' : f'Formaldehyde TCD (CH$_2$O)', 
+    'surf_ch2o' : f'Surface CH$_2$O', 
+    'tcd_formald_slant' : f'CH$_2$O Slant Density', 
+    'tcd_formald_amf' : f'CH$_2$O Air Mass', 
     'cf' : 'Cloud Fraction',
     'ctp' : 'Cloud Top Pressure',
     'cth' : 'Cloud Top Height',
@@ -75,18 +79,15 @@ names_dict = {
     'cbh' : 'Cloud Bottom Height',
     'cloud_radius': 'Estimated Cloud Radius',
     'ln_cloud_energy': 'Estimated Cloud Energy',
-    'ke_oz': 'TOMs/OMI Kinetic Energy', 
+    'ke_oz': 'TOMI Kinetic Energy', 
     's5p_ke_oz': 'S5P Kinetic Energy',
-    's5p_temp_delta_ratio' : 'S5P TCO Temperature Daily Change Ratio',
-    'delta_surf_temp' : 'Change in Surface Temperature',
-    'delta_surf_temp_ratio' : 'Daily Change in Surface Temperature Ratio',
-    'down_srad_moving_wkly_average' : 'D.S Radiation WkMA',
-    'wdsp_moving_wkly_average' : 'Average Wind Speed WkMA',
-    'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit WkMA',
-    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O3 WkMA',
-    'max_surf_temp_moving_wkly_average' : 'Max Surface Temperature WkMA',
+    'down_srad_moving_wkly_average' : 'Downward Shortwave Radiation.WkMA',
+    'wdsp_moving_wkly_average' : 'Average Wind Speed.WkMA',
+    'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit.WkMA',
+    'du_transformation_moving_wkly_average' : f'TOMS/OMI 10km O$_3$.WkMA',
+    'max_surf_temp_moving_wkly_average' : 'Max Surface Temp.WkMA',
     'tco_nd_moving_wkly_average' : 'S5P 1km WkMA',
-    'tco_temp_moving_wkly_average' : 'S5P TCO Temperature WkMA',
+    'tco_temp_moving_wkly_average' : f'S5P TCO$_3$ Temp.WkMA',
     'month_1': 'January', 
     'month_2': 'February', 
     'month_3': 'March', 
@@ -103,17 +104,18 @@ names_dict = {
     'Spring': 'Spring',
     'Summer': 'Summer',
     'Fall': 'Fall'}
+
 # Testing Time Frame: 2019-01-01 - 2024-12-14
-ohe_months = [f'month_{x}' for x in range(1,13)]
-start_date = pd.Timestamp('2018-12-01')
-end_date = pd.Timestamp('2025-01-16')
-init_dat['date'] = pd.to_datetime(init_dat['date'], format='%Y-%m-%d')  # converting to date time
+ohe_months=[f'month_{x}' for x in range(1,13)]
+start_date=pd.Timestamp('2018-12-01')
+end_date=pd.Timestamp('2025-01-16')
+init_dat['date']=pd.to_datetime(init_dat['date'], format='%Y-%m-%d')  # converting to date time
 init_dat.replace([np.inf, -np.inf], np.nan, inplace=True)
-site_list = np.unique(init_dat[['site_id']]).tolist()
+site_list=np.unique(init_dat[['site_id']]).tolist()
 s5p_model_2018_2024=init_dat[(init_dat.date>=start_date)&(init_dat.date<=end_date)].drop(columns=['geometry','datum','aqi','site_name']).reset_index(drop=True)
-nan_counts = (s5p_model_2018_2024.groupby('site_id')['max_value'].apply(lambda x: x.isna().sum()).reset_index(name='nan_count'))
-filtered_ids = nan_counts[nan_counts['nan_count'] <= 73]['site_id']
-s5p_model_2018_2024 = s5p_model_2018_2024[s5p_model_2018_2024['site_id'].isin(filtered_ids)]
+nan_counts=(s5p_model_2018_2024.groupby('site_id')['max_value'].apply(lambda x: x.isna().sum()).reset_index(name='nan_count'))
+filtered_ids=nan_counts[nan_counts['nan_count'] <= 73]['site_id']
+s5p_model_2018_2024=s5p_model_2018_2024[s5p_model_2018_2024['site_id'].isin(filtered_ids)]
 # s5p_model_2018_2024 = s5p_model_2018_2024.loc[s5p_model_2018_2024['max_value'].dropna().index,:]
 s5p_model_2018_2024['ndvi']=s5p_model_2018_2024['ndvi']/10000
 ###################################################################################################
@@ -153,7 +155,7 @@ def set_timedums(datafwame):
     return data, season, full
 
 def plot_pearson(df,title,file):# Function to easily plot Pearson Correlation Coefficient Matrix
-    pearson_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\correlations') #####PATH FIX HERE
+    pearson_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','correlations')
     if not os.path.exists(pearson_path):
         os.makedirs(pearson_path)
     titles = [names_dict[col] for col in df.columns if col in names_dict]
@@ -161,7 +163,7 @@ def plot_pearson(df,title,file):# Function to easily plot Pearson Correlation Co
     corr = df.corr(method='pearson',min_periods=366)
     mask = np.triu(np.ones_like(corr, dtype=bool),k=1)
     plt.figure(figsize=(8.5,8.5))
-    plt.title(title, y=1.05, size=15)
+    plt.title(title, y=1.05, size=12)
     ax = sns.heatmap(corr,
                      mask=mask,
                      linewidths=0.1, 
@@ -177,7 +179,7 @@ def plot_pearson(df,title,file):# Function to easily plot Pearson Correlation Co
     plt.yticks(rotation=0)
     plt.xticks([])
     plt.tight_layout()
-    plt.savefig(os.path.join(pearson_path,f'{file}.png'),dpi=500)
+    plt.savefig(os.path.join(pearson_path,f'{file}.png'),dpi=300)
     plt.close()
 
 # Functions to assign gradient columns
@@ -189,37 +191,35 @@ def hist_grid(
     df,              
     names_dict=None,  
     corr_map=None,    
-    figsize=(8.5, 11),
-    trim_pct=(5, 95), 
+    figsize=(7, 4),
+    trim_pct=(2, 98), 
     outname=None,     
-    ):
+):
     names_dict = names_dict or {}
-    corr_map   = corr_map   or {}
-    series = []
-    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')#####PATH FIX HERE
-    path = os.path.join(s_path,outname)
-    for col in df.select_dtypes("number").columns:
-        series.append((col, df[col].dropna()))
-    n = len(series)
-    ncols, nrows = 5, math.ceil(n / 5) 
-    vmax = max([abs(corr_map.get(c, 0)) for c, _ in series] or [1])
-    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True)
+    corr_map   = corr_map or {}
+    s_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','histograms')
+    path = os.path.join(s_path, outname) if outname else 'def.png'
+    series = [(col, df[col].dropna()) for col in df.select_dtypes("number").columns]
+    ncols, nrows = 6, 7
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize,constrained_layout=True)
     axes = axes.flatten()
+    vmax = max(abs(corr_map.get(c, 0)) for c,_ in series) or 1
     cmap = plt.colormaps["RdBu"]
     for ax, (col, s) in zip(axes, series):
         lo, hi = np.percentile(s, trim_pct)
         s_trim = s[(s >= lo) & (s <= hi)]
-        r = corr_map.get(col, 0.0)                
+        r = corr_map.get(col, 0.0)
         color = cmap((r + vmax) / (2 * vmax))
-        sns.histplot(s_trim, bins=30, ax=ax, color=color, kde=False)
-        ax.set_title(names_dict.get(col, col), fontsize=7)
+        sns.histplot(s_trim, bins=30, ax=ax,color=color, kde=False)
+        raw_title = names_dict.get(col, col)
+        wrapped = "\n".join(textwrap.wrap(raw_title, width=14))
+        ax.text(0.5, 0.75,wrapped,transform=ax.transAxes, fontsize=8,ha="center",va="top",path_effects=[pe.Stroke(linewidth=0.5, foreground="white"),pe.Normal()])
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_xlabel('')
-        ax.set_ylabel("")
-    for ax in axes[n:]:
+        ax.set_ylabel('')
+    for ax in axes[len(series):]:
         ax.set_visible(False)
-    fig.suptitle("Distribution of Features", fontsize=12)
     if outname:
         fig.savefig(path, dpi=300, bbox_inches="tight")
     return fig
@@ -231,136 +231,121 @@ def quick_scatter(
     target_col="max_value",
     names_dict=None,
     corr_map=None,
-    figsize=(8.5, 11),
+    figsize=(6.5, 4.5),
     outname="scatter_all.png",# saved to your ~/…/scatter_plots folder
 ):
     d_plot=df.drop(columns=['date'])
-    s_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\scatter_plots')#####PATH FIX HERE
+    s_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','scatter_plots')
+    os.makedirs(s_path, exist_ok=True)
     path = os.path.join(s_path,outname)
     n = len(d_plot.columns)
-    ncols, nrows = 5, math.ceil(n / 5) 
+    ncols, nrows = 6,7
     fig,axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True)
     axes = axes.flatten()
     yval=y_df[target_col]
     for i,col in enumerate(d_plot.columns):
         ax=axes[i]
         xval=d_plot[col]
-        sns.regplot(x=xval, y=yval, ax=ax, scatter_kws={'s': 5, 'alpha': 0.5}, line_kws={'color': 'red'})
-        ax.set_title(names_dict.get(col), fontsize=7)
-        ax.set_xlabel(f'$R^{2}$={corr_map[col]:.2f}', fontsize=6)
+        sns.regplot(x=xval, y=yval, ax=ax, scatter_kws={'s': 12, 'alpha': 0.5}, line_kws={'color': 'red'})
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_ylabel('')
+        ax.set_xlabel('')
+        raw_title = names_dict.get(col, col) + f' $R^{2}$={corr_map[col]:.2f}'
+        wrapped = "\n".join(textwrap.wrap(raw_title, width=14))
+        ax.text(0.5, 0.5,wrapped,transform=ax.transAxes, fontsize=6,ha="center",va="center",path_effects=[pe.Stroke(linewidth=0.5, foreground="white"),pe.Normal()])
     for ax in axes[n:]:
         ax.set_visible(False)
-    fig.suptitle("Scatter Plots", fontsize=14)
     if outname:
         fig.savefig(path, dpi=300, bbox_inches="tight")
     return fig
-
-# Fancy One Feature Plot
+#Max Value 
 def fancy_predictor_plot(data):
-    pred_ot_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\histograms')#####PATH FIX HERE
-    if not os.path.exists(pred_ot_path):
-        os.makedirs(pred_ot_path)
-    cmap = LSC.from_list('green_orange_red',['green', 'orange', 'red'],N=3)
-    colors = [cmap(i) for i in np.linspace(0, 1, 32)]
-    hex_colors = [mcolors.to_hex(c) for c in colors]
-    site_means = data.groupby('site_id')['max_value'].mean().sort_values()
-    mean_values = site_means.values
-    n_sites = len(site_means)
-    low_thresh = np.percentile(mean_values, 5)
-    high_thresh = np.percentile(mean_values, 95)
-    group_labels = {}
-    for site_id, value in site_means.items():
-        if value <= low_thresh:
-            group_labels[site_id] = 'Low'
-        elif value <= high_thresh:
-            group_labels[site_id] = 'Medium'
-        else:
-            group_labels[site_id] = 'High'
-    group_colors = {'Low': [], 'Medium': [], 'High': []}
-    site_colors = {}
-    for i, site_id in enumerate(site_means.index):
-        group = group_labels[site_id]
-        color = hex_colors[i % len(hex_colors)]
-        group_colors[group].append(color)
-        site_colors[site_id] = color
-    plt.figure(figsize=(11, 8.5))
-    for site_id in site_means.index:
-        group_data = data[data['site_id'] == site_id]
-        sns.histplot(
-            group_data['max_value'],
-            kde=False,
-            stat="density",
-            element="step",
-            fill=True,
-            color=site_colors[site_id],
-            alpha=0.1,
-            label=None,
-            bins=15)
-    sns.histplot(
-        data['max_value'].values, # type: ignore
-        kde=True,
-        stat="density",
-        element="bars",
-        fill=True,
-        color='white',
-        bins=21)
-    mean_line = mlines.Line2D([], [], color='black', label='Mean Distribution')
-    low_patch = mlines.Line2D([], [], color='green', label='Lower Percentile (0.05)', linewidth=3)
-    med_patch = mlines.Line2D([], [], color='orange', label='Dataset Average', linewidth=3)
-    high_patch = mlines.Line2D([], [], color='red', label='Upper Percentile (0.95)', linewidth=3)
-    plt.title(f'Distribution of Max Values (Sites = {n_sites})', size=15, weight='bold')
-    plt.xlabel('Max Surface Ozone Concentration')
-    plt.ylabel('Density')
-    plt.legend(handles=[mean_line, low_patch, med_patch, high_patch], title="Site Groups", bbox_to_anchor=(1, 1), loc='upper right')
-    plt.tight_layout()
-    plt.savefig(os.path.join(pred_ot_path,'surf_o3_hist_by_site_2019_2024.png'), dpi=500)
-    plt.close()
-
-# Over Time by Feature
+  pred_ot_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','histograms')
+  if not os.path.exists(pred_ot_path):
+    os.makedirs(pred_ot_path)
+  cmap = LSC.from_list('green_orange_red',['green', 'blue', 'red'],N=3)
+  colors = [cmap(i) for i in np.linspace(0, 1, 32)]
+  hex_colors = [mcolors.to_hex(c) for c in colors]
+  site_means = data.groupby('site_id')['max_value'].mean().sort_values()
+  n_sites = len(site_means)
+  mean_values = site_means.values
+  low_thresh = np.percentile(mean_values, 1)
+  high_thresh = np.percentile(mean_values, 99)
+  group_labels = {}
+  for site_id, value in site_means.items():
+    if value <= low_thresh:
+      group_labels[site_id] = 'Low'
+    elif value <= high_thresh:
+      group_labels[site_id] = 'Medium'
+    else:
+      group_labels[site_id] = 'High'
+  group_colors = {'Low': [], 'Medium': [], 'High': []}
+  site_colors = {}
+  for i, site_id in enumerate(site_means.index):
+    group = group_labels[site_id]
+    color = hex_colors[i % len(hex_colors)]
+    group_colors[group].append(color)
+    site_colors[site_id] = color
+  plt.figure(figsize=(4, 3))
+  for site_id in site_means.index:
+    group_data = data[data['site_id'] == site_id]
+    sns.histplot(group_data['max_value']*1000,kde=False,stat="density",element="step",fill=True,color=site_colors[site_id],alpha=0.1,label=None,bins=15)
+  sns.histplot(data['max_value'].values*1000,kde=True,stat="density",element="bars",fill=True,color='#aa8000',alpha=0.8,bins=21)
+  ax = plt.gca()
+  ax.tick_params(axis='both', labelsize=8)
+  kde = ax.lines[-1]
+  kde.set_linewidth(1)
+  kde.set_path_effects([pe.Stroke(linewidth=2, foreground='black'), pe.Normal()])
+  mean_line = mlines.Line2D([], [], color='#aa8000', label='Dataset Mean ($\\mu$)', linewidth=1, markersize=8)
+  mean_line.set_path_effects([pe.Stroke(linewidth=2, foreground='black'), pe.Normal()])
+  low_patch = mlines.Line2D([], [], color='green', label='Lower ($\\mu$<0.05)', linewidth=2, markersize=8)
+  med_patch = mlines.Line2D([], [], color='blue', label='Standard (0.05<$\\mu$<0.95)', linewidth=2, markersize=8)
+  high_patch = mlines.Line2D([], [], color='red', label='Upper ($\\mu$>0.95)', linewidth=2, markersize=8)
+  plt.xlabel('DAMO$_3$ (ppb)', size=8)
+  plt.ylabel('Decimal Percent of Total', size=8)
+  plt.legend(handles=[mean_line, low_patch, med_patch, high_patch], title=f"Percentile (N={n_sites})", bbox_to_anchor=(1, 1), loc='upper right',fontsize=6,title_fontsize=6)
+  plt.tight_layout()
+  plt.savefig(os.path.join(pred_ot_path,'surf_o3_hist_by_site_2019_2024.png'), dpi=300)
+  plt.close()
 def feature_ot_plot(df, title='Features Over Time (2019-2024)', fname="feats_ot"):
-    feature_path = os.path.expanduser('~\\Documents\\Github\\UCBMasters\\data\\results\\features_overtime')#####PATH FIX HERE
-    if not os.path.exists(feature_path):
-      os.makedirs(feature_path)
-    df.loc[:,'st_fips']=df["site_id"].astype(str).str[:4].map({'4013':'Maricopa','4021':'Pinal','4019':'Pima'})
-    colors = {'Maricopa': '#1f77b4',   # blue
-              'Pinal':    '#ff7f0e',   # orange
-              'Pima':     '#2ca02c'}
-    grouped = df.groupby('st_fips')
-    exclude_plots = ['date', 'site_id', 'lat', 'long','elevation','st_fips']
-    fig, axes = plt.subplots(nrows=10, ncols=4, sharex=True, figsize=(8.5, 11))
-    axes = axes.flatten()
-    count = 0
-    for col in df.columns:
-      if col in exclude_plots:
-        continue
-      if count >= len(axes):
-        break
-      ax = axes[count]
-      for name, group in grouped:
-        grp = group.sort_values('date')
-        ax.plot(grp['date'].values, grp[col].values, label=name.title(), color=colors[name])
-        ax.legend().set_visible(False) 
-      ax.set_ylabel("")
-      ax.set_xticks([])
-      ax.set_yticks([])
-      ax.set_xlabel(f"Min = {group[col].min():.2f}, Max={group[col].max():.2f}", fontsize=7)
-      ax.set_title(f'{names_dict[col]}', fontsize=12)
-      count += 1
-    for idx in range(count, len(axes)):
-        fig.delaxes(axes[idx])
-    handles = [mlines.Line2D([], [], color=c, lw=2, label=n) for n, c in colors.items()]
-    fig.legend(handles=handles,
-               loc='lower right',
-               ncol=1,
-               frameon=True,
-               bbox_to_anchor=(0.95,0.025))
-    fig.suptitle(f'{title}')
-    fig.tight_layout()
-    fig.savefig(os.path.join(feature_path,f'{fname}_2019_2024.png'), dpi=500)
-    plt.close()
+  feature_path = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','overtime')
+  if not os.path.exists(feature_path):
+    os.makedirs(feature_path)
+  df.loc[:,'st_fips']=df["site_id"].astype(str).str[:4].map({'4013':'Maricopa','4021':'Pinal','4019':'Pima'})
+  colors = {'Maricopa':'#1f77b4','Pinal':'#ff7f0e', 'Pima':'#2ca02c'}
+  grouped = df.groupby('st_fips')
+  exclude_plots = ['date', 'site_id', 'lat', 'long','elevation','st_fips']
+  fig, axes = plt.subplots(nrows=8, ncols=6, sharex=True, figsize=(6.5, 4))
+  axes = axes.flatten()
+  count = 0
+  for col in df.columns:
+    if col in exclude_plots:
+      continue
+    if count >= len(axes):
+      break
+    ax = axes[count]
+    for name, group in grouped:
+      grp = group.sort_values('date')
+      ax.plot(grp['date'].values, grp[col].values, label=name.title(), color=colors[name])
+      ax.legend().set_visible(False) 
+    ax.set_ylabel("")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlabel("")
+    raw_title = names_dict.get(col, col)
+    wrapped = "\n".join(textwrap.wrap(raw_title, width=14))
+    ax.text(0.5, 0.5,wrapped,transform=ax.transAxes, fontsize=6,ha="center",va="center",path_effects=[pe.Stroke(linewidth=0.5, foreground="white"),pe.Normal()])
+    count += 1
+  for idx in range(count, len(axes)):
+    fig.delaxes(axes[idx])
+  handles = [mlines.Line2D([], [], color=c, lw=2, label=n) for n, c in colors.items()]
+  fig.legend(handles=handles,loc='lower center',ncol=3,frameon=True,bbox_to_anchor=(0.5,0.025))
+  # fig.suptitle(f'{title}', fontsize=10)
+  fig.tight_layout()
+  plt.show()
+  # fig.savefig(os.path.join(feature_path,f'{fname}_2019_2024.png'), dpi=300)
+  # plt.close()
 
 # Kriging Drift Functions
 def drift_funcFT(x, y): 
@@ -408,10 +393,10 @@ def interpolate_values(df, cols):
       rmse =root_mean_squared_error(true_values, predicted_values)
       fin_results['name'].append(col)
       fin_results['model'].append(name)
-      fin_results['mse'].append(mse)
-      fin_results['mae'].append(mae)
+      fin_results['mse'].append(mse*1000)
+      fin_results['mae'].append(mae*1000)
       fin_results['r2'].append(r2)
-      fin_results['rmse'].append(rmse)
+      fin_results['rmse'].append(rmse*1000)
     all_preds=pd.DataFrame(fin_results)
     fin_preds = all_preds.sort_values(['rmse']).groupby('name').head(2)
     for idx, group in fin_preds.groupby('name'):
@@ -440,122 +425,115 @@ def add_rank(df_corr):
     return fin_corr_compare
 
 # Main Function
-def model_creation(features,pred_var,type_name)-> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def model_creation(features,features_df,pred_var,type_name)-> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     # returns 3 dataframes; training data, prediction data, model information
     # Data
-    test_dataframe_version=x_both[["site_id",'date']+features].copy()
+    test_dataframe_version=features_df[["site_id",'date']+features].copy()
     ## Feature Info
     num_features=len(features)
     ## Model Params
-    adaboost_params = {
-        'learning_rate': np.linspace(0.00001, 1.0, max(3, num_features // 2)).tolist(),
-        'n_estimators': np.linspace(50, 500, max(3, num_features // 2)).astype(int).tolist(),
-        'loss': ['linear','square', 'exponential']}
-    gb_params = {
-        'loss':['absolute_error','squared_error', 'huber'], 
-        'ccp_alpha': np.linspace(0.0, 0.1, max(3, num_features // 2)).tolist(), 
-        'learning_rate': np.logspace(-3, -1, max(3, num_features // 2)).tolist(), 
-        'max_depth': [None]+np.linspace(3, 10, max(3, num_features // 2)).astype(int).tolist(),
-        'n_estimators': np.linspace(100, int(math.ceil(max(500,  num_features * 10))), 10).astype(int).tolist(), 
-        'tol': np.logspace(-4, -2, 3).tolist()}
-    xgb_params = {
-        'n_estimators': np.linspace(50, int(math.ceil(max(500, num_features * 10))), 10).astype(int).tolist(),
-        'grow_policy': ['depthwise','lossguide'],
-        'learning_rate': np.linspace(0.001, min(0.1, 1/num_features), 4).tolist(),
-        'importance_type':["gain","weight","cover","total_gain","total_cover"],
-        'reg_lambda': np.linspace(0, 1,3).tolist()} 
-    rf_params = {  
-        'ccp_alpha': [0,0.001,0.05], 
-        'criterion': ['squared_error', 'absolute_error', 'friedman_mse'],
-        'max_depth': [None]+np.linspace(3, 10, max(3, num_features // 2)).astype(int).tolist(),
-        'max_features': ['log2','sqrt',0.75,None],
-        'n_estimators': np.linspace(50, int(math.ceil(max(500, num_features*10))), 100).astype(int).tolist()}
-    mlpr_params = {
-        'hidden_layer_sizes': [(100,),(50,),(num_features*5, num_features*5, num_features*2, 3),(num_features, num_features*2, num_features,),(num_features, num_features * 2, num_features*2, num_features,3),(num_features * 10, num_features*5, num_features * 2,num_features,1)],
-        'alpha': np.linspace(1e-6, 1e-2, 3).tolist(),
-        'activation' : ['logistic','tanh','relu'],
-        'max_iter': np.linspace(100, int(math.ceil(max(200, num_features*10))), 15).astype(int).tolist(),
-        'batch_size': ['auto', num_features ,num_features*10],
-        'beta_1': np.linspace(0.88, 0.95, 4).tolist(),
-        'beta_2': np.linspace(0.996, 0.9999, 4).tolist(),
-        'epsilon': np.logspace(-8, -5, 4).tolist(),
-        'learning_rate': ['constant',"invscaling", "adaptive"]}
-    rk_params = {
-        'variogram_model':['linear','spherical','gaussian'],
-        'pseudo_inv': [True],
-        'pseudo_inv_type': ['pinvh'],
-        'drift_terms': ['function','point_drift'], 
-        'nlags':[4,6,8],
-        'functional_drift': [drift_funcFT]}
-    models = [
-        ('adaboost',AdaBoostRegressor(random_state=42),adaboost_params),
-        ('gb',GradientBoostingRegressor(criterion='friedman_mse',random_state=42),gb_params),
-        ('xgrb',XGBRegressor(booster='gbtree',n_jobs=-1,random_state=42),xgb_params),
-        ('rf',RandomForestRegressor(random_state=42,n_jobs=-1),rf_params),
-        ('mlper',MLPRegressor(solver='adam',early_stopping=True,random_state=42),mlpr_params)]
+    adaboost_params = {'learning_rate': np.linspace(0.00001, 1.0, max(3, math.ceil(num_features // 2))).tolist(),
+                       'n_estimators': np.linspace(50, 500, max(3, math.ceil(num_features // 2))).astype(int).tolist(),
+                       'loss': ['linear','square', 'exponential']}
+    gb_params = {'loss':['absolute_error','squared_error', 'huber'], 
+                 'ccp_alpha': np.linspace(0.0, 0.1, max(3, math.ceil(num_features // 2))).tolist(), 
+                 'learning_rate': np.logspace(-3, -1, max(3, math.ceil(num_features // 2))).tolist(), 
+                 'max_depth': [None]+np.linspace(3, 10, max(3, math.ceil(num_features // 2))).astype(int).tolist(),
+                 'n_estimators': np.linspace(100, int(math.ceil(max(500,  num_features * 10))), 7).astype(int).tolist(), 
+                 'tol': np.logspace(-4, -2, 3).tolist()}
+    xgb_params = {'n_estimators': np.linspace(50, int(math.ceil(max(500, num_features * 10))), 7).astype(int).tolist(),
+                  'grow_policy': ['depthwise','lossguide'],
+                  'learning_rate': np.linspace(0.001, min(0.1, 1/num_features), 4).tolist(),
+                  'importance_type':["gain","weight","cover","total_gain","total_cover"],
+                  'reg_lambda': np.linspace(0, 1,3).tolist()} 
+    rf_params = {'ccp_alpha': [0,0.001,0.05], 
+                 'criterion': ['squared_error', 'absolute_error', 'friedman_mse'],
+                 'max_depth': [None]+np.linspace(3, 10, max(3, math.ceil(num_features // 2))).astype(int).tolist(),
+                 'max_features': ['log2','sqrt',0.75,None],
+                 'n_estimators': np.linspace(50, int(math.ceil(max(500, num_features*10))), 10).astype(int).tolist()}
+    mlpr_params = {'hidden_layer_sizes': [(100,),(50,),(num_features*5, num_features*5, num_features*2, 3),(num_features, num_features*2, num_features,),(num_features, num_features * 2, num_features*2, num_features,3),(num_features * 10, num_features*5, num_features * 2,num_features,1)],
+                   'alpha': np.linspace(1e-6, 1e-2, 3).tolist(),
+                   'activation' : ['logistic','tanh','relu'],
+                   'max_iter': np.linspace(100, int(math.ceil(max(200, num_features*10))), 7).astype(int).tolist(),
+                   'batch_size': ['auto', num_features ,num_features*10],
+                   'beta_1': np.linspace(0.88, 0.95, 4).tolist(),
+                   'beta_2': np.linspace(0.996, 0.9999, 4).tolist(),
+                   'epsilon': np.logspace(-8, -5, 4).tolist(),
+                   'learning_rate': ['constant',"invscaling", "adaptive"]}
+    rk_params = {'variogram_model':['linear','spherical','gaussian'],
+                 'pseudo_inv': [True],
+                 'pseudo_inv_type': ['pinvh'],
+                 'drift_terms': ['function','point_drift'], 
+                 'nlags':[4,6,8],
+                 'functional_drift': [drift_funcFT]}
+    models = [('adaboost',AdaBoostRegressor(random_state=42),adaboost_params),
+              ('gb',GradientBoostingRegressor(criterion='friedman_mse',random_state=42),gb_params),
+              ('xgrb',XGBRegressor(booster='gbtree',n_jobs=-1,random_state=42),xgb_params),
+              ('rf',RandomForestRegressor(random_state=42,n_jobs=-1),rf_params),
+              ('mlper',MLPRegressor(solver='adam',early_stopping=True,random_state=42),mlpr_params)]
     if len(np.unique(test_dataframe_version[['site_id']]))>14:
-        k_split = int(np.round(len(np.unique(test_dataframe_version.site_id))*0.2))
-        folds=GroupKFold(n_splits=k_split)
+      k_split = int(np.round(len(np.unique(test_dataframe_version.site_id))*0.2))
+      folds=GroupKFold(n_splits=k_split)
     else:
-        folds= LeaveOneGroupOut()
-        k_split = folds.get_n_splits(groups=test_dataframe_version.site_id)
+      folds= LeaveOneGroupOut()
+      k_split = folds.get_n_splits(groups=test_dataframe_version.site_id)
     predictions = pred_var[['site_id','date','lat','long','max_value','elevation']].copy()
     models_opt = predictions[['date','site_id']].copy()
     count=len(models_opt)
     print(f'\nModel Testing Start: {type_name}')        
     for model_name, model, param_grid in models:
-        models_opt[f'{model_name}_params'] = [None] * count
-        models_opt[f'{model_name}_rk_params']= [None] * count
-        x_dat = test_dataframe_version[features].copy()
-        y_dat = predictions[['max_value']].copy()
-        points_st = predictions[['date','site_id','lat','long','elevation']].copy()
-        points_st[f'{model_name}_preds']=np.nan
-        points_st[f'{model_name}_rk_preds']=np.nan
-        t1 = datetime.now()
-        scv = RandomizedSearchCV(model, param_grid, scoring='neg_mean_squared_error', n_jobs=-1,cv=folds.split(x_dat, y_dat, points_st.site_id))
-        scv_best = scv.fit(X=x_dat, y=y_dat.values.ravel()) # fit model on entire dataset - break down by year?
-        for i, (train_index, test_index) in enumerate(folds.split(x_dat, y_dat, points_st.site_id)):
-            X_train, X_test = x_dat.iloc[train_index,:], x_dat.iloc[test_index,:]
-            _ , preds = scv_best.predict(X_train),scv_best.predict(X_test)
-            points_st.iloc[test_index,5]=preds
-        predictions[f'{model_name}_preds']=points_st[[f'{model_name}_preds']]
-        model_te = datetime.now()
-        points_st[f'{model_name}_resid']=predictions['max_value']-predictions[f'{model_name}_preds']
-        dates=points_st['date'].unique()
-        models_opt[f'{model_name}_params'] = [scv_best.best_params_]*count
-        dtml = model_te-t1 
-        dtml=str(dtml).split(".")[0]
-        model_preds=predictions[[f'{model_name}_preds']].copy()
-        print(f'  SM: {model_name} - {dtml}')
-        print(f'    RMSE {np.round(root_mean_squared_error(y_dat, model_preds),8)}, MAE {np.round(mean_absolute_error(y_dat, model_preds),8)}, MSE {np.round(mean_squared_error(y_dat, model_preds),8)}, Percent Error {np.round(mean_absolute_percentage_error(y_dat, model_preds)*100,2)}%')
-        for dy in dates:
-            krige_df = points_st[points_st['date']==dy].copy()
-            x_rk = points_st[points_st['date']==dy][['lat','long','elevation']].copy()
-            y_rk =  points_st[points_st['date']==dy][[f'{model_name}_resid']].copy()
-            for z, (train_ind, test_ind) in enumerate(folds.split(x_rk, y_rk, krige_df.site_id)):
-                rkx_train, rky_train = x_rk.iloc[train_ind,:], y_rk.iloc[train_ind,0]
-                training_points, testing_points = krige_df.iloc[train_ind,2:4], krige_df.iloc[test_ind,2:4]
-                krige_cv = GridSearchCV(Krige(method= "universal", coordinates_type= "geographic", point_drift=list(zip(rkx_train.long,rkx_train.lat,rkx_train.elevation))), param_grid=rk_params)
-                best_krige=krige_cv.fit(X=np.array(list(zip(training_points.long,training_points.lat))), y=rky_train.values.reshape(-1,1))
-                clean_params = krige_cv.best_params_.copy()
-                clean_params['functional_drift'] = 'drift_funcFT'
-                params=pd.Series([clean_params for _ in test_ind], index=test_ind)
-                models_opt.iloc[test_ind,3]=params
-                uk_model = UniversalKriging(training_points.long, training_points.lat, rky_train.values.reshape(-1,1),**best_krige.best_params_)
-                rk_vals, _ = uk_model.execute("points", testing_points.long, testing_points.lat)
-                krige_df.iloc[test_ind,6]=krige_df.iloc[test_ind,5]+rk_vals
-            points_st.loc[points_st['date']==dy,f'{model_name}_rk_preds']=krige_df[[f'{model_name}_rk_preds']]
-        predictions[f'{model_name}_rk_preds']=points_st[[f'{model_name}_rk_preds']]
-        model_rk = datetime.now()
-        model_rk_preds=predictions[[f'{model_name}_rk_preds']].copy()
-        dtrk = model_rk-model_te 
-        dtrk=str(dtrk).split(".")[0]
-        print(f'  RK: {dtrk}')
-        print(f'    RMSE {np.round(root_mean_squared_error(y_dat, model_rk_preds),8)}, MAE {np.round(mean_absolute_error(y_dat, model_rk_preds),8)}, MSE {np.round(mean_squared_error(y_dat, model_rk_preds),8)}, Percent Error {np.round(mean_absolute_percentage_error(y_dat, model_rk_preds)*100,2)}%')
-        t2 = datetime.now() 
-        dt = t2-t1 
-        time = str(dt).split(".")[0]
-        print(f'--> Complete (t = {time})\n')
+      models_opt[f'{model_name}_params'] = [None] * count
+      models_opt[f'{model_name}_rk_params']= [None] * count
+      x_dat = test_dataframe_version[features].copy()
+      y_dat = predictions[['max_value']].copy()
+      points_st = predictions[['date','site_id','lat','long','elevation']].copy()
+      points_st[f'{model_name}_preds']=np.nan
+      points_st[f'{model_name}_rk_preds']=np.nan
+      t1 = datetime.now()
+      scv = RandomizedSearchCV(model, param_grid, n_jobs=-1,cv=folds.split(x_dat, y_dat, points_st.site_id))
+      scv_best = scv.fit(X=x_dat, y=y_dat.values.ravel())
+      for i, (train_index, test_index) in enumerate(folds.split(x_dat, y_dat, points_st.site_id)):
+        X_train, X_test = x_dat.iloc[train_index,:], x_dat.iloc[test_index,:]
+        _ , preds = scv_best.predict(X_train),scv_best.predict(X_test)
+        points_st.iloc[test_index,5]=preds
+      predictions[f'{model_name}_preds']=points_st[[f'{model_name}_preds']]
+      model_te = datetime.now()
+      points_st[f'{model_name}_resid']=predictions['max_value']-predictions[f'{model_name}_preds']
+      dates=points_st['date'].unique()
+      models_opt[f'{model_name}_params'] = [scv_best.best_params_]*count
+      dtml = model_te-t1 
+      dtml=str(dtml).split(".")[0]
+      model_preds=predictions[[f'{model_name}_preds']].copy()
+      print(f'  SM: {model_name} - {dtml}')
+      print(f'    RMSE {np.round(root_mean_squared_error(y_dat, model_preds),8)}, MAE {np.round(mean_absolute_error(y_dat, model_preds),8)}, MSE {np.round(mean_squared_error(y_dat, model_preds),8)}, Percent Error {np.round(mean_absolute_percentage_error(y_dat, model_preds)*100,2)}%')
+      for dy in dates:
+        krige_df = points_st[points_st['date']==dy].copy()
+        x_rk = points_st[points_st['date']==dy][['lat','long','elevation']].copy()
+        y_rk =  points_st[points_st['date']==dy][[f'{model_name}_resid']].copy()
+        for z, (train_ind, test_ind) in enumerate(folds.split(x_rk, y_rk, krige_df.site_id)):
+          rkx_train, rky_train = x_rk.iloc[train_ind,:], y_rk.iloc[train_ind,0]
+          training_points, testing_points = krige_df.iloc[train_ind,2:4], krige_df.iloc[test_ind,2:4]
+          krige_cv = GridSearchCV(Krige(method= "universal", coordinates_type= "geographic", point_drift=list(zip(rkx_train.long,rkx_train.lat,rkx_train.elevation))), param_grid=rk_params)
+          best_krige=krige_cv.fit(X=np.array(list(zip(training_points.long,training_points.lat))), y=rky_train.values.reshape(-1,1))
+          clean_params = krige_cv.best_params_.copy()
+          clean_params['functional_drift'] = 'drift_funcFT'
+          params=pd.Series([clean_params for _ in test_ind], index=test_ind)
+          models_opt.iloc[test_ind,3]=params
+          uk_model = UniversalKriging(training_points.long, training_points.lat, rky_train.values.reshape(-1,1),**best_krige.best_params_)
+          rk_vals, _ = uk_model.execute("points", testing_points.long, testing_points.lat)
+          krige_df.iloc[test_ind,6]=krige_df.iloc[test_ind,5]+rk_vals
+        points_st.loc[points_st['date']==dy,f'{model_name}_rk_preds']=krige_df[[f'{model_name}_rk_preds']]
+      predictions[f'{model_name}_rk_preds']=points_st[[f'{model_name}_rk_preds']]
+      model_rk = datetime.now()
+      model_rk_preds=predictions[[f'{model_name}_rk_preds']].copy()
+      dtrk = model_rk-model_te 
+      dtrk=str(dtrk).split(".")[0]
+      print(f'  RK: {dtrk}')
+      print(f'    RMSE {np.round(root_mean_squared_error(y_dat, model_rk_preds),8)}, MAE {np.round(mean_absolute_error(y_dat, model_rk_preds),8)}, MSE {np.round(mean_squared_error(y_dat, model_rk_preds),8)}, Percent Error {np.round(mean_absolute_percentage_error(y_dat, model_rk_preds)*100,2)}%')
+      t2 = datetime.now() 
+      dt = t2-t1 
+      time = str(dt).split(".")[0]
+      print(f'--> Complete (t = {time})\n')
     return predictions, models_opt, test_dataframe_version
 ###################################################################################################
 # setting mask values to 0
@@ -601,15 +579,20 @@ print(f"\n  Imputating Columns: {no_dice}")
 # Feature Engineering
 # scaled change in the time series
 s5p_model_2018_2024['du_transformation']=(s5p_model_2018_2024['ozone']*0.00021441)
-s5p_model_2018_2024 = s5p_model_2018_2024.drop(columns=['ozone'])
-s5p_model_2018_2024 = s5p_model_2018_2024.sort_values(['site_id', 'date']).reset_index(drop=True) # type: ignore
-s5p_model_2018_2024['down_srad_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['down_srad'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['wdsp_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['wdsp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['vprps_def_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['vprps_def'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['du_transformation_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['du_transformation'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['max_surf_temp_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['max_surf_temp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['tco_nd_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['tco_nd'].transform(lambda x: x.rolling(7, min_periods=1).mean())
-s5p_model_2018_2024['tco_temp_moving_wkly_average'] = s5p_model_2018_2024.groupby('site_id')['tco_temp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024=s5p_model_2018_2024.drop(columns=['ozone'])
+s5p_model_2018_2024=s5p_model_2018_2024.sort_values(['site_id', 'date']).reset_index(drop=True) # type: ignore
+# WKMA
+s5p_model_2018_2024['down_srad_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['down_srad'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['wdsp_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['wdsp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['vprps_def_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['vprps_def'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['du_transformation_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['du_transformation'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['max_surf_temp_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['max_surf_temp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['tco_nd_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['tco_nd'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+s5p_model_2018_2024['tco_temp_moving_wkly_average']=s5p_model_2018_2024.groupby('site_id')['tco_temp'].transform(lambda x: x.rolling(7, min_periods=1).mean())
+# Surface VoCs, CH2O, NO2
+s5p_model_2018_2024['surf_no2']= (s5p_model_2018_2024['no2_cnd']-s5p_model_2018_2024['strat_no2'])*(((294.3-s5p_model_2018_2024['max_surf_temp'])/298)*100)
+s5p_model_2018_2024['surf_ch2o'] = s5p_model_2018_2024['tcd_formald']*(s5p_model_2018_2024['max_surf_temp']*(s5p_model_2018_2024['spf_hmdty'])**(287/1005))
+
 # Lagrangian Feild Theory Feature Estimate:
 # Lagrangian density with field operator ϕ = lat wrt lon
 # Kinetic Energy Theory of Ideal Gas - PV = NRT, want V of Ozone, V = NRT/P = N = molar amount of ozone, R = 0.08206, T = Temperature, P = pressure, E = 3*k_b*T
@@ -620,9 +603,8 @@ s5p_model_2018_2024['cloud_radius'] = ((s5p_model_2018_2024['cth']-s5p_model_201
 s5p_model_2018_2024['cloud_pressure'] = (s5p_model_2018_2024['cbp']+s5p_model_2018_2024['ctp'])/2000 # kPa
 
 s5p_model_2018_2024['ln_cloud_energy'] = (s5p_model_2018_2024['cloud_pressure']*((4/3)*(np.pi)*(s5p_model_2018_2024['cloud_radius'] ** 3))*s5p_model_2018_2024['cf']).replace(-np.inf,0)
-s5p_model_2018_2024['h2o_energy']=s5p_model_2018_2024['tco_temp']*s5p_model_2018_2024['h2o_cnd']*(3/2)/100000
+s5p_model_2018_2024['h2o_energy']=s5p_model_2018_2024['max_surf_temp']*s5p_model_2018_2024['h2o_cnd']*(3/2)/100000
 
-s5p_model_2018_2024['surf_no2']= (s5p_model_2018_2024['no2_cnd']-s5p_model_2018_2024['strat_no2'])
 # Filtering to Times frame
 sample_start = pd.Timestamp('2019-01-01')
 sample_end = pd.Timestamp('2024-12-14')
@@ -630,12 +612,13 @@ s5p_model_2018_2024=s5p_model_2018_2024[(s5p_model_2018_2024.date>=sample_start)
 max_val_col = s5p_model_2018_2024.pop('max_value')  # Remove the column. then make the 1st column in df
 s5p_model_2018_2024.insert(0, 'max_value', max_val_col) 
 s5p_model_2018_2024.replace([np.inf, -np.inf], 0, inplace=True)
+s5p_model_2018_2024.replace(np.nan, 0, inplace=True)
 x_months,x_seasons,x_both=set_timedums(s5p_model_2018_2024.drop(columns=['lat','long']))
 # Analyze 2018-2024 Data
 ### Pearsons & Statistical Distributions
 # Remove the column
 # Final Model Data
-X_data = x_seasons.drop(columns=['max_value','site_id'])
+X_data = x_seasons.drop(columns=['site_id','max_value'])
 y_data = pd.merge(x_seasons[['max_value','elevation','site_id','date']],s5p_model_2018_2024[['lat','long']], left_index=True,right_index=True)
 
 ## Making Comparable Data Sets using temporal variables
@@ -648,9 +631,8 @@ corr_compare = pd.DataFrame({'rank': range(1,len(x_seasons.drop(columns=['date',
                              'spearman_feature': add_rank(spearman_corr)['variable'],
                              'spearman_coef': add_rank(spearman_corr)['max_value'],
                              'kendall_feature': add_rank(kendall_corr)['variable'],
-                             'kendall_coef': add_rank(kendall_corr)['max_value']
-                             })
-corr_map = {row['pearson_feature']: row['pearson_coef']
+                             'kendall_coef': add_rank(kendall_corr)['max_value']})
+corr_map = {row['pearson_feature']: row['pearson_coef'] 
             for _, row in corr_compare.iterrows()}
 # dat1=X_data[['elevation','precip','spf_hmdty','min_surf_temp']]
 # dat2=X_data[['arsl_idx','no2_cnd','h2o_cnd', 'strat_no2',]]
@@ -670,48 +652,41 @@ corr_map = {row['pearson_feature']: row['pearson_coef']
 # ### Both
 # plot_pearson(x_seasons.drop(columns=['date','site_id']),"Post-Feature Transformation\nAll Temporal Dummy Variables",'pearson_2018_2024_seas')
 # Histograms
-hist = hist_grid(X_data,names_dict=names_dict,corr_map=corr_map,outname="hist_all_2018_2023.png")
-scat=quick_scatter(X_data.drop(columns=['Fall','Spring','Summer','Winter']),y_data,names_dict=names_dict,corr_map=corr_map,outname="scatter_2018_2023.png")
-# Scatter
-### max_value by Site ID
-fancy_predictor_plot(y_data)
-# Over Time Plot
-feature_ot_plot(s5p_model_2018_2024, fname="feats_ot_v3")
-
-hist_feats = ['ke_oz','vprps_def','bnid','ndvi','down_srad_moving_wkly_average','max_surf_temp_moving_wkly_average','vprps_def_moving_wkly_average','wdsp_moving_wkly_average','du_transformation_moving_wkly_average','Spring','Summer','Winter']
-modern_feats = ['s5p_ke_oz','vprps_def','max_surf_temp','surf_no2','cf','tcd_formald','h2o_cnd','tco_temp_moving_wkly_average','tco_nd_moving_wkly_average','Spring','Summer','Winter']
-goat_feats = corr_compare[0:24]['pearson_feature'].values.tolist()
-best_theory_feats = ['surf_no2','vprps_def','s5p_ke_oz','cf','ndvi','max_surf_temp','bnid','wdsp_moving_wkly_average','Spring','Summer','Winter']
-# all_test = corr_compare[:]['pearson_feature'].values.tolist()
-
-hist_results, hist_params, hist_features = model_creation(hist_feats,y_data,'Historical')
-modern_results, modern_params, modern_features = model_creation(modern_feats,y_data,'Modern')
-theory_results, theory_params, theory_features = model_creation(best_theory_feats,y_data,'Theory')
-goat_results, goat_params, goat_features = model_creation(goat_feats,y_data,'GOAT 24')
-# all_results, all_params, all_features = model_creation(all_test,y_data,'All Features')
-
-### Value
+# hist = hist_grid(X_data.drop(columns=['date','site_id']),names_dict=names_dict,corr_map=corr_map,outname="hist_all_2019_2024.png")
+# scat=quick_scatter(X_data.drop(columns=['Fall','Spring','Summer','Winter','site_id']),y_data,names_dict=names_dict,corr_map=corr_map,outname="scatter_2019_2024.png")
+# # Scatter
+# ### max_value by Site ID
+# fancy_predictor_plot(y_data)
+# # Over Time Plot
+# feature_ot_plot(s5p_model_2018_2024, fname="feats_ot_v3")
 table_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone", "data",'tables','datasets')
-if not os.path.exists(table_path): os.makedirs(table_path)
-# Model Outputs
-hist_results.to_csv(os.path.join(table_path,'hist_model_results_seasons.csv'))
-modern_results.to_csv(os.path.join(table_path,'modern_model_results_seasons.csv'))
-theory_results.to_csv(os.path.join(table_path,'theory_model_results.csv'))
-goat_results.to_csv(os.path.join(table_path,'goat_model_results.csv'))
-# all_results.to_csv(os.path.join(table_path,'all_feature_results.csv'))
-### Model Parameters
-hist_params.to_csv(os.path.join(table_path,'hist_model_params_seasons.csv'))
-modern_params.to_csv(os.path.join(table_path,'modern_model_params_seasons.csv'))
-theory_params.to_csv(os.path.join(table_path,'theory_goat_model_params.csv'))
-goat_params.to_csv(os.path.join(table_path,'goat_model_params.csv'))
-# all_params.to_csv(os.path.join(table_path,'all_feature_params.csv'))
-#Training Features
-hist_features.to_csv(os.path.join(table_path,'hist_model_features_seasons.csv'))
-modern_features.to_csv(os.path.join(table_path,'modern_model_features_seasons.csv'))
-theory_features.to_csv(os.path.join(table_path,'theory_goat_model_features.csv'))
-goat_features.to_csv(os.path.join(table_path,'goat_model_features.csv'))
-# all_features.to_csv(os.path.join(table_path,'all_features.csv'))
+if not os.path.exists(table_path): 
+  os.makedirs(table_path)
+hist_feats = ['ke_oz','vprps_def','bnid','ndvi','spf_hmdty','down_srad_moving_wkly_average','max_surf_temp_moving_wkly_average','vprps_def_moving_wkly_average','wdsp_moving_wkly_average','Spring','Summer','Winter']
+modern_feats = ['s5p_ke_oz','vprps_def','surf_no2','h2o_energy','surf_ch2o','tcd_formald_slant','carmon_cnd','tco_temp_moving_wkly_average','Spring','Summer','Winter']
+goat_feats = corr_compare[0:24]['pearson_feature'].values.tolist()
+best_theory_feats = ['vprps_def','surf_no2','cf','ndvi','s5p_ke_oz','bnid','wdsp_moving_wkly_average','tco_temp_moving_wkly_average','Spring','Summer','Winter']
+# all_test = corr_compare[:]['pearson_feature'].values.tolist()
+# np.unique(hist_feats+modern_feats+goat_feats+best_theory_feats)
+# hist_results, hist_params, hist_features = model_creation(hist_feats,x_seasons,y_data,'Historical')
+# hist_results.to_csv(os.path.join(table_path,'hist_model_results_seasons.csv'))
+# hist_params.to_csv(os.path.join(table_path,'hist_model_params_seasons.csv'))
+# hist_features.to_csv(os.path.join(table_path,'hist_model_features_seasons.csv'))
 
+modern_results, modern_params, modern_features = model_creation(modern_feats,x_seasons,y_data,'Modern')
+modern_results.to_csv(os.path.join(table_path,'modern_model_results_seasons.csv'))
+modern_params.to_csv(os.path.join(table_path,'modern_model_params_seasons.csv'))
+modern_features.to_csv(os.path.join(table_path,'modern_model_features_seasons.csv'))
+
+# theory_results, theory_params, theory_features = model_creation(best_theory_feats,x_seasons,y_data,'Theory')
+# theory_results.to_csv(os.path.join(table_path,'theory_model_results.csv'))
+# theory_params.to_csv(os.path.join(table_path,'theory_goat_model_params.csv'))
+# theory_features.to_csv(os.path.join(table_path,'theory_goat_model_features.csv'))
+
+# goat_results, goat_params, goat_features = model_creation(goat_feats,x_seasons,y_data,'GOAT 24')
+# goat_results.to_csv(os.path.join(table_path,'goat_model_results.csv'))
+# goat_params.to_csv(os.path.join(table_path,'goat_model_params.csv'))
+# goat_features.to_csv(os.path.join(table_path,'goat_model_features.csv'))
 ###### Season Results:
 ####### Historical ######
 #   SM: adaboost - 0:01:38
@@ -730,17 +705,7 @@ goat_features.to_csv(os.path.join(table_path,'goat_model_features.csv'))
 #     RMSE 0.00461196, MAE 0.00349395, MSE 2.127e-05, Percent Error 7.83%
 #   RK: 0:36:57
 #     RMSE 0.00328109, MAE 0.00245197, MSE 1.077e-05, Percent Error 5.48%
-# --> Complete (t = 0:37:04)
-
-#   SM: rf - 2:07:01
-#     RMSE 0.00654435, MAE 0.00489872, MSE 4.283e-05, Percent Error 11.14%
-#   RK: 0:37:10
-#     RMSE 0.00370796, MAE 0.00273049, MSE 1.375e-05, Percent Error 6.15%
-# --> Complete (t = 2:44:11)
-
-#   SM: mlper - 0:00:51
-#     RMSE 0.00754801, MAE 0.00582052, MSE 5.697e-05, Percent Error 13.3%
-#   RK: 0:37:16
+# --> Complete (t = 0:37:04) 
 #     RMSE 0.00375416, MAE 0.00277921, MSE 1.409e-05, Percent Error 6.29%
 # --> Complete (t = 0:38:08)
 
@@ -777,36 +742,36 @@ goat_features.to_csv(os.path.join(table_path,'goat_model_features.csv'))
 # --> Complete (t = 0:38:42)
 
 
-####### Theory ######
-#   SM: adaboost - 0:01:54
-#     RMSE 0.00757523, MAE 0.00595773, MSE 5.738e-05, Percent Error 13.42%
-#   RK: 0:37:17
-#     RMSE 0.00375184, MAE 0.00277456, MSE 1.408e-05, Percent Error 6.26%
-# --> Complete (t = 0:39:11)
+# Model Testing Start: Theory
+#   SM: adaboost - 0:02:02
+#     RMSE 0.00726846, MAE 0.00572008, MSE 5.283e-05, Percent Error 12.88%
+#   RK: 1:42:03
+#     RMSE 0.00378709, MAE 0.00280038, MSE 1.434e-05, Percent Error 6.31%
+# --> Complete (t = 1:44:06)
 
-#   SM: gb - 0:26:17
-#     RMSE 0.00721106, MAE 0.00547697, MSE 5.2e-05, Percent Error 12.52%
-#   RK: 0:37:16
-#     RMSE 0.00370874, MAE 0.00273732, MSE 1.375e-05, Percent Error 6.18%
-# --> Complete (t = 1:03:34)
+#   SM: gb - 0:41:20
+#     RMSE 0.00975437, MAE 0.0075334, MSE 9.515e-05, Percent Error 17.86%
+#   RK: 0:58:03
+#     RMSE 0.00368771, MAE 0.00271616, MSE 1.36e-05, Percent Error 6.15%
+# --> Complete (t = 1:39:24)
 
-#   SM: xgrb - 0:00:05
-#     RMSE 0.00509188, MAE 0.00387005, MSE 2.593e-05, Percent Error 8.64%
-#   RK: 0:36:54
-#     RMSE 0.00345308, MAE 0.00258901, MSE 1.192e-05, Percent Error 5.8%
-# --> Complete (t = 0:37:00)
+#   SM: xgrb - 0:00:09
+#     RMSE 0.00467325, MAE 0.00356858, MSE 2.184e-05, Percent Error 7.99%
+#   RK: 1:14:31
+#     RMSE 0.00329414, MAE 0.00248158, MSE 1.085e-05, Percent Error 5.56%
+# --> Complete (t = 1:14:40)
 
-#   SM: rf - 1:38:58
-#     RMSE 0.00702919, MAE 0.00538245, MSE 4.941e-05, Percent Error 12.21%
-#   RK: 0:49:42
-#     RMSE 0.00377356, MAE 0.00279206, MSE 1.424e-05, Percent Error 6.29%
-# --> Complete (t = 2:28:40)
+#   SM: rf - 3:53:35
+#     RMSE 0.00567719, MAE 0.0043624, MSE 3.223e-05, Percent Error 9.82%
+#   RK: 0:38:49
+#     RMSE 0.00352131, MAE 0.00262742, MSE 1.24e-05, Percent Error 5.89%
+# --> Complete (t = 4:32:25)
 
-#   SM: mlper - 0:00:33
-#     RMSE 0.0073112, MAE 0.00560634, MSE 5.345e-05, Percent Error 12.85%
-#   RK: 0:50:47
-#     RMSE 0.00387443, MAE 0.00285087, MSE 1.501e-05, Percent Error 6.44%
-# --> Complete (t = 0:51:21)
+#   SM: mlper - 0:01:38
+#     RMSE 0.00818118, MAE 0.00634774, MSE 6.693e-05, Percent Error 14.67%
+#   RK: 0:40:56
+#     RMSE 0.00370752, MAE 0.00273287, MSE 1.375e-05, Percent Error 6.19%
+# --> Complete (t = 0:42:34)
 
 
  ####### GOAT 24 ######

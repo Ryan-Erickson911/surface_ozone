@@ -1,0 +1,375 @@
+\chapter{Results} \label{chap:rlts} The SMaRK method yielded the least error across each of the datasets mentioned in Chapter \ref{tmas:findatasets}. When properly tuned, each ensemble better modeled the known trend by incorporating spatial uncertainty, rather than reporting it solely in the error calculations. Machines of varying computational processing power evaluated the practicality and usability of SMaRK. Three main setups were tested: an Apple A1 MacBook Air 2020, a Windows desktop with a Ryzen 5700XT processor, and a Citrix-based Cloud Computing Desktop provided by the Institute of Behavioral Sciences (IBS) at CU, Boulder. Numerous external functions in a library developed with Python 3.12.x (\cite{rossum_python_2010}) are available on GitHub and can be easily imported onto user machines for various areas of interest (AOIs). 
+
+The unique functions tested on these machines allowed for rapid creation of several predictive rasters from January 1, 2019 to December 16, 2024, over the AOI. The 16th serves as the endpoint for the raster interpolation strategy described in Chapter \ref{methods:inrtp}. Figure \ref{fig:whynousedaily} illustrates DAMO$_3$ from all five models, compared to values obtained from the in situ monitor at daily time steps. This style of plot will not be reproduced for the discussion in Chapter \ref{chap:discussion}; it is presented here to convey the overall concept behind similar figures.\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\linewidth]{ThesisFilePkg//figs/adaboost_all_ds_ot_daily.png}
+    \caption{Daily Predictions From AdaBoost Over Time}
+    \label{fig:whynousedaily}
+\end{figure} The black line represents the daily average maximum surface O$_3$ (DAMO$_3$), with the disagreement between DAMO$_3$ and each model illustrated by the color splits. High agreement between the models and the established trend is indicated by a predominance of colors representing each trend. RK enhancements to the already low predictions further reduced errors by accounting for geospatial uncertainty based on the trends observed in situ measurements over the AOI.
+
+Physics- and CTM-based $\beta$s utilized in the literature-based dataset (L.B.D) were identified as the most effective predictors. The results from each dataset support the final model, XGRB-RK, presented in Chapter \ref{chap:discussion}. Figure \ref{fig:whyusemonthly} shows monthly averaged surface O$_3$ (MASO$_3$) values using the historical dataset (H.D), which will be used to better depict results over time for T.D. \begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{ThesisFilePkg//figs/adaboost_all_ds_ot.png}
+    \caption{Monthly Predictions From AdaBoost Over Time}
+    \label{fig:whyusemonthly}
+\end{figure} XGRB-RK was utilized for PHOTUC due to its consistency across model outputs, yielding an root mean square error (RMSE) of 3.18 ppb and mean average percent error (MAPE) of 5.28 percent with L.B.D. The historical dataset (H.D) dataset also provided suitable results with respectively similar errors of 3.14 ppb and 5.20 percent; however, the results across each model were more consistent with L.B.D. While the H.D and modern dataset (M.D) yielded similar errors, both datasets exhibited strict trends and were over fitted in some cases. Despite this, a readily available historical dataset from 1980 to the present day is possible given the results of model tuning and overall predictions. All statistical models produced an overall error margin of approximately 10 percent, with individual errors ranging from 1.47 to 14.18 percent, influenced by variations in the tuning of the searching algorithm. 
+
+The ML/AI ensembles alone predicted surface O$_3$ concentrations in PHOTUC with a mean absolute error (MAE) of approximately 0.61 ppb to 6.02 ppb, similar to studies utilizing CTM-based characteristics (e.g., \cite{chen_association_2023}; \cite{hu_estimation_2022}; \cite{ko_machine-learning-based_2022}). Moreover, the distribution of the resulting errors is consistent, exhibiting slight over- and under-predictions. However, the overall accuracy is significantly reduced, indicating strong positive reinforcement from spatial kriging across all models. Ensembles such as gradient boosting, random forests, and perceptrons yielded RMSE comparable to studies employing single ML ensembles (\cite{c_t_long-term_2020}; \cite{chen_estimating_2023}; \cite{huang_development_2017}; \cite{kleinert_intellio3-ts_2020}; \cite{ko_machine-learning-based_2022}). RK enhancements that incorporate geospatial uncertainty into ML / AI models yielded between 1.39 percent to 6.36 percent error, with MAE values of 0.59 ppb to 2.82 ppb. DAMO$_3$ modeled by SMaRK benefited all models throughout the study. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Individual Model Accuracy} \label{rlts:modelacc} XGRB stands out slightly better than other algorithms. Once RK was integrated, the all models were better representative of the known trend in the AOI. This will be seen in detail later in \ref{xgrb} with monthly averages. Data sets like G.O.A.T.24, which included additional $\beta$s as depicted in \ref{fig:G.O.A.T.24}, increased the number of dependent variables affected by multicollinearity. However, they still produced usable models with less error than the statistical model alone, despite exponentially increasing computation times.Each ensemble; including early linear regression and weighting methods, ran hundreds of times over the course of this project to test reproducibility of the script and computational efficiency. Due to the stochastic nature of surface ozone concentrations over time, certain seasons with low concentrations required minimal corrections through residual kriging, as the statistical ensemble yielded near-perfect predictions. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline 
+            \textbf{Model}	& \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\
+            \hline \hline 
+             RF-RK & 1.38 & 1.03 &  2.26 & 0.983 \\[3pt]
+                RF & 1.81 & 1.35 &  2.96 & 0.971 \\[3pt]
+             GB-RK & 2.51 & 1.82 &  3.99 & 0.945 \\[3pt]
+            XGRB-RK & 3.14 & 2.36 &  5.20 & 0.914 \\[3pt]
+            MLP-RK & 3.46 & 2.58 &  5.74 & 0.896 \\[3pt]
+                GB & 3.42 & 2.45 &  5.38 & 0.894 \\[3pt]
+            ADA-RK & 3.53 & 2.64 &  5.88 & 0.892 \\[3pt]
+              XGRB & 4.54 & 3.46 &  7.65 & 0.815 \\[3pt]
+               ADA & 7.17 & 5.59 & 12.5  & 0.550 \\[3pt]
+               MLP & 7.29 & 5.66 & 12.7  & 0.538 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Historical $\beta$s} 
+    \label{tab:hist_modelerror}
+\end{table} This is primarily due to the reaction’s dependence on incoming solar radiation and the known seasonality of $\beta$s discussed in Chapter 2. The error from H.D in Table \ref{tab:hist_modelerror} indicates that the random forest model performed exceptionally well; however, comparisons across different datasets did not yield consistent results. In general, even these over-tuned complex trends had less error at surrounding points due to correlation with a simple, non-stochastic trend of geospatial uncertainty. The effects of residual kriging in this relatively small AOI still offered similar, albeit better representations of DAMO$_3$ reactions for dense urban areas such as those in (\cite{al-qassimi_ozone_2020}; \cite{kong_unraveling_2023}; \cite{lo_elevated_2024}; \cite{sadighi_intra-urban_2017}) due to a better distribution of values shown in Chapter \ref{clcsn:dev}.
+
+Extreme gradient boosting produced the most accurate predictions for this project, as demonstrated by the consistent improvements and complex trend modeling across Tables \ref{tab:hist_modelerror}, \ref{tab:modern_modelerror}, and \ref{tab:G.O.A.T.24_models}. Noting the similarities in model outputs from Tables \ref{tab:hist_modelerror} and \ref{tab:modern_modelerror}, XGRB-RK had a consistent R$^{2}$ correlation coefficient and RMSE of around 0.91 and 2.56 ppb, respectively. Gradient-boosted methods tended to be overly stringent. While these models showed improved RMSE and R$^{2}$ values, gradient boosting alone produced less accuracy as seen in Table \ref{tab:modern_modelerror}. This is likely due to their final tuning metrics as noted in each section.
+\begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline
+            \textbf{Model}  & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{R$^{2}$} \\
+            \hline \hline 
+              GB-RK &  0.36 & 0.13 &  0.25 & 0.999 \\[3pt]
+                 GB &  0.36 & 0.09 &  0.17 & 0.999 \\[3pt]
+             XGRB-RK &  3.41 & 2.57 &  5.65 & 0.899 \\[3pt]
+             MLP-RK &  3.47 & 2.60 &  5.76 & 0.895 \\[3pt]
+              RF-RK &  3.48 & 2.61 &  5.76 & 0.895 \\[3pt]
+             ADA-RK &  3.93 & 2.66 &  5.88 & 0.864 \\[3pt]
+               XGRB &  5.09 & 3.94 &  8.75 & 0.771 \\[3pt]
+                 RF &  6.50 & 5.08 & 11.4  & 0.631 \\[3pt]
+                ADA &  7.11 & 5.67 & 12.5  & 0.556 \\[3pt]
+                MLP &  7.32 & 5.68 & 12.8  & 0.534 \\ 
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Modern $\beta$s.} 
+    \label{tab:modern_modelerror}
+\end{table} Overall, ensemble predictions required precise parameters for optimal effectiveness; otherwise, the learned trends were either too general or too strict to accurately capture seasonal fluctuations across the AOI. Maps at the end of Appendix A (starting at Map \ref{appmap:smarkfeats_2019}) illustrates the variance observed among purely statistical methods for each county and their RK enhancements after denoting the use of $\beta$s. These provided a higher resolution depictions of PHOTUC. 
+
+When properly corrected for geospatial uncertainty with regression kriging, all methods were able to properly account for geospatial uncertainty. Each dataset also has potential  Ensemble methods alone seemed to fail during known low seasons of O$_3$, where it shows high fluctuations with smaller correlations to lower variations with dependent variables. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline 
+            \textbf{Model}	& \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{R$^{2}$} \\
+            \hline \hline 
+              RF-RK & 1.41 & 1.05 &  2.33 & 0.983 \\[3pt]
+                 RF & 1.52 & 1.13 &  2.50 & 0.980 \\[3pt]
+              GB-RK & 3.25 & 2.41 &  5.33 & 0.908 \\[3pt]
+            XGRB-RK & 3.27 & 2.47 &  5.46 & 0.907 \\[3pt]
+             ADA-RK & 3.56 & 2.66 &  5.90 & 0.890 \\[3pt]
+             MLP-RK & 3.61 & 2.71 &  6.05 & 0.886 \\[3pt]
+               XGRB & 4.50 & 3.46 &  7.63 & 0.821 \\[3pt]
+                 GB & 4.72 & 3.41 &  7.58 & 0.805 \\[3pt]
+                ADA & 6.81 & 5.35 & 11.9  & 0.595 \\[3pt]
+                MLP & 7.09 & 5.44 & 12.4  & 0.559 \\
+            \hline 
+        \end{tabular}
+    \caption{Error Statistics (ppb) for G.O.A.T.24 $\beta$s.} 
+    \label{tab:G.O.A.T.24_modelerror}
+\end{table} Model tuning parameters, errors, and the final $\beta$s selected for prediction are quickly mentioned, then further elaborated on in Chapter VI. ML/AI methods which performed the best were able to establish cyclic trends among the $\beta$s across datasets. While some models themselves outperformed RK methods (e.g. random forest with the HD), the RK version of those methods performed the best out of the dataset. %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Proposed Feature Transformations, ML/AI Ensembles, and RK} \label{rlts:featsmark} After interpolating the available monitors in the PHOTUC region, a total of 60,900 data points were utilized in model training, comprising 5,225 dates per 28 monitors. The omitted monitor locations had more data available before 2018 and could be used in the historical model-making process. The distributions of training $\beta$s, interpolation strategies, model parameters, kriging enhancements, and case study statistics are outlined to illustrate that RK integrations into complex models are necessary and can address some of the reported errors noted in the literature in Chapter \ref{litreview:ctms}. The preprocessing methods for this thesis are reproducible for data from 1980 to today, barring monitor availability. Certain raster postprocessing steps, along with integration and display functions, are currently under development as Python evolves, transitioning into well-maintained functions that enhance user accessibility (e.g. Rasterio; \cite{gillies_rasterio_2013} based on GDAL; \cite{rouault_gdal_2025}) for raster sampling and extraction. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline 
+            \textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{R$^{2}$} \\
+            \hline \hline 
+             XGRB-RK & 3.18 & 2.40 &  5.28 & 0.912 \\[3pt]
+              RF-RK & 3.36 & 2.53 &  5.59 & 0.902 \\[3pt]
+              GB-RK & 3.43 & 2.56 &  5.68 & 0.898 \\[3pt]
+             MLP-RK & 3.47 & 2.60 &  5.76 & 0.895 \\[3pt]
+             ADA-RK & 3.57 & 2.68 &  5.94 & 0.889 \\[3pt]
+               XGRB & 4.66 & 3.56 &  7.82 & 0.806 \\[3pt]
+                 RF & 5.53 & 4.27 &  9.44 & 0.730 \\[3pt]
+                ADA & 7.02 & 5.56 & 12.2  & 0.569 \\[3pt]
+                MLP & 7.65 & 5.98 & 13.5  & 0.491 \\[3pt]
+                 GB & 8.91 & 6.93 & 15.9  & 0.317 \\ 
+            \hline
+        \end{tabular}
+    \caption{Error Statistics for Literature-Based $\beta$s.} 
+    \label{tab:theoretical_modelerror}
+\end{table} The results of L.B.D, which included a majority of the transformed $\beta$s, demonstrated the most consistent outcomes across each data set. The subsequent sections of this chapter indicate that there was minimal variation in error for the H.D and M.D models, illustrating the feasibility of creating a large historical database using SMaRK methods and feature transformations. 
+
+The selected time frame included 28 of the 38 unique monitors distributed throughout the PHOTUC region, as depicted in Figure \ref{fig:basemap} in Chapter \ref{fig:monsurfo3hist}. Monitors with approximately 85 percent missing data, primarily due to age or malfunctions, were excluded from this study as they could not support interpolation and imputation. Despite similar tendencies in errors, the incorporation of RK into each ML/AI model resulted in lower errors than those of comparable CTM and emission transport representations of DAMO$_3$ concentrations (e.g. \cite{chattopadhyay_mlp_2019} \cite{pan_comparison_2023} \cite{zhang_recurrent_2022}), where the RMSE of the proposed complex ensembles was around 4.3 ppb, 15 ppb, and 9 ppb, respectively. \cite{chattopadhyay_mlp_2019} and \cite{zhang_recurrent_2022} reported R$_3$ values of 0.35 and 0.69 and respectively. Models across datasets were first analyzed to determine the overall best accuracy, followed by an examination of the effectiveness of each complex model's parameters with RK integration.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Adaptive Boost} \label{rlts:adaboost} Adaptive Boosting (ADA) yielded the lowest predictive performance among the evaluated ensemble methods. Across all datasets, the performance metrics of the model indicated a limited capacity to capture complex spatial-temporal variations in DAMO$_3$ values. The best-performing dataset for ADA was \textbf{G.O.A.T.24}, achieving an RMSE of 6.81 ppb, MAE of 5.35 ppb, MAPE of 11.9\%, and $R^{2}$ of 0.595 (Table~\ref{tab:ada_model}). \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline
+            \textbf{Historical} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\[3pt]
+            \hline
+            ADA-RK & 3.53 & 2.64 &  5.88 & 0.892 \\[3pt]
+               ADA & 7.17 & 5.59 & 12.5  & 0.550 \\
+            \hline
+            \textbf{Modern}	&   &   &   &   \\[3pt]
+            \hline
+             ADA-RK &  3.93 & 2.66 &  5.88 & 0.864 \\[3pt]
+                ADA &  7.11 & 5.67 & 12.5  & 0.556 \\
+            \hline
+            \textbf{L.B.D}	&   &   &   &   \\[3pt]
+            \hline
+             ADA-RK & 3.57 & 2.68 &  5.94 & 0.889 \\[3pt]
+                ADA & 7.02 & 5.56 & 12.2  & 0.569 \\
+            \hline
+            \textbf{G.O.A.T.24}	&   &   &   &   \\[3pt]
+            \hline
+             ADA-RK & 3.56 & 2.66 &  5.90 & 0.89 \\[3pt]
+                ADA & 6.81 & 5.35 & 11.9  & 0.595 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Adaptive Boosting.} 
+    \label{tab:ada_model_error}
+\end{table} In contrast, the least informative dataset was \textbf{M.D.}, while \textbf{T.D.} recorded the highest errors with ADA alone. ADA struggled to detect cyclic patterns and performed best under configurations that minimized linear loss trends, primarily through associations in DAMO$_3$ values across samples in related RK trends. The model's limited adaptability to non-linear relationships and the presence of mixed positive and negative correlations contributed to its lower performance. This relatively better outcome is likely attributed to a larger feature set and optimized hyperparameters, including 90 estimators, exponential loss, and a learning rate of 0.09 (Table~\ref{tab:ada_results_all}).
+\begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|ccc||}
+            \hline 
+            \textbf{Dataset} & \textbf{Estimators} & \textbf{Loss} & \textbf{Learning Rate} \\
+            \hline \hline 
+            \textbf{Historical} & 50 & exponential & 0.2 \\[3pt]
+            \textbf{Modern} & 50 & exponential & 0.5 \\[3pt]
+            \textbf{Theory} & 50 & linear & 0.5 \\[3pt]
+            \textbf{G.O.A.T.24} & 90 & exponential & 0.09 \\[3pt]
+            \hline
+        \end{tabular}
+    \caption{Tuning Results for Adaptive Boosting.} 
+    \label{tab:ada_model_tuning}
+\end{table} When combined with residual kriging (ADA-RK), the model’s accuracy improved substantially across all datasets. For \textbf{G.O.A.T.24}, ADA-RK achieved an RMSE of 3.56 ppb, MAE of 2.66 ppb, MAPE of 5.90 percent, and $R^{2}$ of 0.890 — representing a significant gain over ADA alone. However, the integration of RK was less effective with datasets like T.D, where the interaction of correlated and anti-correlated $\beta$s introduced additional noise. ADA was unable to detect cyclic trends and was best configured to minimize linear loss by examining the associations present across DAMO$_3$ values in each sample, using a constant learning rate of 1.0. ADA was the least frequently used method in the literature in Chapter \ref{chap:litreview}, and this project demonstrated why. This model performed optimally with G.O.A.T.24 due to the extensive usage of $\beta$s for estimating an overall linear loss trend. Co-funding variables allowed for more deterministic variograms due to errors stemming from similar correlations as opposed to errors from positive and negatively correlated $\beta$s. 
+
+The best overall comparison between ADA and ADA-RK occurred with G.O.A.T.24 $\beta$s. The combination of both positive and negatively correlated $\beta$s contributed to this inefficacy. TD did not show an initial complex trend as strong, having the second-highest error with ADA alone. The dispersion of ADA predictions was higher, with maximum and minimum predicted values of 87.41 ppb $\pm$ 4.80 ppb and 10.37 ppb $\pm$ 4.80 ppb, respectively, and a mean of 48.26 ppb. In contrast, ADA-RK exhibited a reduced range, with a maximum of 89.58 ppb $\pm$ 3.38 ppb, a minimum of 5.73 ppb $\pm$ 3.38 ppb, and a mean of 48.23 ppb. Overall, ADA’s performance lagged behind other boosting approaches, but selective feature engineering and RK integration substantially improved prediction accuracy in spatially complex datasets.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Gradient Boost} \label{rlts:gb} Gradient Boosting (GB) achieved its best performance with the G.O.A.T.24 dataset, using a tolerance of 0.001, 366 estimators, a maximum depth of 8, absolute error loss, a learning rate of 0.1, and no complexity regularization (Table~\ref{tab:gb_model_tuning}). \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccccc||}
+            \hline 
+            \textbf{Data Set} & \textbf{Tol} & \textbf{Trees} & \textbf{Depth} & \textbf{Loss} & \textbf{Learning Rate} &  \textbf{Complexity} \\
+            \hline \hline
+            \textbf{Historical} & 0.01 & 166 & 10 & huber & 0.04 & 0.02 \\[3pt] 
+            \textbf{Modern} & 0.01 & 100 & None & absolute error & 0.02 & 0.04 \\[3pt] 
+            \textbf{Theory} & 0.0001 & 166 & 3 & absolute error & 0.01 & 0.0 \\[3pt] 
+            \textbf{G.O.A.T.24} & 0.001 & 366 & 8 & absolute error & 0.1 & 0.0 \\
+            \hline
+        \end{tabular}
+    \caption{Tuning Results for Gradient Boost.} 
+    \label{tab:gb_model_tuning}
+\end{table} GB performed best when trained to sample across seasonal bins with the inclusion of fall-based variables. This approach likely led to over-tuning of the model due to the linear temporal aspects across seasons (\cite{choi_summertime_2012}; \cite{guan_summer_2023}; \cite{oltmans_seasonal_1992}). Furthermore, the limited use of positively associated $\beta$s in TD compared to the other datasets, likely resulted in more pronounced semi-yearly trends such as those in H.D and M.D. This configuration proved effective due to the model’s capacity to capture temporal patterns when trained on yearly bins, leveraging linear trends in DAMO$_3$ values. The use of a broader feature set in G.O.A.T.24 likely provided more stable patterns for the model to exploit, while datasets with limited complexity, such as M.D, were less informative. 
+
+The tuning process indicated that larger tree ensembles and finer tolerance thresholds enhanced performance, consistent with findings in the spatial modeling literature \parencite{goodchild_scale_2011, adeeb_variation_2004, cavaliere_development_2023, ionascu_calibration_2021, pires_management_2008}. The performance across datasets shown in Table~\ref{tab:gb_model} demonstrates that GB-RK consistently outperformed GB alone, even after extensive tuning. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline
+            \textbf{Historical} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\[3pt]
+            \hline \hline
+            GB-RK & 2.51 & 1.82 &  3.99 & 0.945 \\[3pt]
+               GB & 3.42 & 2.45 &  5.38 & 0.894 \\
+            \hline
+            \textbf{Modern}	&   &   &   &   \\[3pt]
+            \hline
+            GB-RK &  0.36 & 0.13 &  0.25 & 0.999 \\[3pt]
+               GB &  0.36 & 0.09 &  0.17 & 0.999 \\
+            \hline
+            \textbf{L.B.D}	&   &   &   &   \\[3pt]
+            \hline
+            GB-RK & 3.43 & 2.56 &  5.68 & 0.898 \\[3pt]
+               GB & 8.91 & 6.93 & 15.9  & 0.317 \\ 
+            \hline
+            \textbf{G.O.A.T.24}	&   &   &   &   \\[3pt]
+            \hline
+            GB-RK & 3.25 & 2.41 &  5.33 & 0.908 \\[3pt]
+               GB & 4.72 & 3.41 &  7.58 & 0.805 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Gradient Boost} 
+    \label{tab:gb_model}
+\end{table} The most striking example of RK improvement is L.B.D, where GB alone had an RMSE of 8.91 ppb and $R^{2}$ of 0.317. In contrast, GB-RK reduced the RMSE to 3.43 ppb and increased $R^{2}$ to 0.898, resulting in an improvement of over 180 percent in variance explained. This demonstrates RK’s effectiveness in correcting for spatial autocorrelation and addressing predictive gaps in underperforming models. For G.O.A.T.24, GB achieved an RMSE of 4.72 ppb, MAE of 3.41 ppb, MAPE of 7.58 percent, and $R^{2}$ of 0.805. With the integration of RK, these metrics improved to 3.25 ppb, 2.41 ppb, 5.33 percent, and 0.908, respectively — underscoring the advantage of combining boosting with spatial interpolation techniques.
+
+In terms of output dispersion, GB-RK consistently aligned more closely with observed DAMO$_3$ concentrations due to strict parameter settings. This alignment resulted in narrower prediction ranges and smaller associated uncertainties, which, although minimal, still benefited the model. For example, with \textbf{G.O.A.T.24}, GB-RK estimates had a maximum of 89.58 ppb $\pm$ 3.38 ppb and a minimum of 5.73 ppb $\pm$ 3.38 ppb, compared to GB’s wider range of 87.41 ppb $\pm$ 4.80 ppb to 10.37 ppb $\pm$ 4.80 ppb. This reduced spread reflects RK’s smoothing effect and its capability to mitigate extreme residuals in the boosted predictions. Overall, Gradient Boosting demonstrated strong predictive potential, particularly when tuned with deeper trees and fine tolerances; however, its performance was highly dataset-dependent. The incorporation of residual kriging proved especially valuable in scenarios with sparse or unevenly distributed feature coverage, making GB-RK a robust hybrid approach for spatially complex air quality modeling.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Extreme Gradient Boost} \label{rlts:xgrb} Extreme Gradient Boosting (XGRB) consistently ranked among the most accurate and reliable models in this study, demonstrating strong performance across all datasets and particularly excelling with feature-rich and spatially diverse inputs. Its optimal configurations mirrored the high estimator counts of Gradient Boosting (up to 500) while balancing them with moderate learning rates (0.042–0.091) and dataset-specific regularization (Table~\ref{tab:xgrb_model}). \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|ccccc||}
+            \hline 
+            \textbf{Data Set} & reg lambda & n estimators & learning rate & importance type & grow policy \\
+            \hline \hline
+            \textbf{Historical} & 0.5 & 500 & 0.083 & weight & lossguide \\[3pt] 
+            \textbf{Modern}	 & 0.0 & 200 & 0.091 & gain & depthwise \\[3pt]
+            \textbf{Theory}  & 1.0 & 425 & 0.091 & gain & lossguide \\[3pt]
+            \textbf{G.O.A.T.24} & 0.5 & 425 & 0.042 & total_gain & depthwise \\ 
+            \hline
+        \end{tabular}
+    \caption{Tuning Results for Extreme Gradient Boost} 
+    \label{tab:xgrb_model}
+\end{table} The flexibility in tuning parameters, such as the grow policy, allows XGRB to selectively cultivate deeper trees in regions where the data is most informative. This capability captures complex non-linear and interaction effects that are often overlooked by simpler boosting approaches. XGRB's dispersion metrics highlight its reliability. Without RK, predictions ranged from 87.41 ppb $\pm$ 4.80 ppb to 10.37 ppb $\pm$ 4.80 ppb, with a mean of 48.26 ppb. With RK, this narrowed to a maximum of 89.58 ppb $\pm$ 3.38 ppb, a minimum of 5.73 ppb $\pm$ 3.38 ppb, and a mean of 48.23 ppb — indicating reduced prediction uncertainty and better alignment with observed values. 
+
+The \textbf{M.D.} dataset emerged as the most predictive scenario for XGRB-RK, benefiting from the model’s ability to handle mixed feature types and spatial autocorrelation. Due to its consistent top-tier performance, capability to model complex relationships, and compatibility with residual kriging, XGRB is identified as a leading candidate for future operational air quality prediction systems, especially in environments where both temporal depth and spatial resolution are essential.
+\begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline
+            \textbf{Historical} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\[3pt]
+            \hline
+            XGRB-RK & 3.14 & 2.36 &  5.20 & 0.914 \\[3pt]
+              XGRB & 4.54 & 3.46 &  7.65 & 0.815 \\
+            \hline
+            \textbf{Modern}	&   &   &   &   \\[3pt]
+            \hline
+            XGRB-RK &  3.41 & 2.57 &  5.65 & 0.899 \\[3pt]
+               XGRB &  5.09 & 3.94 &  8.75 & 0.771 \\
+            \hline
+            \textbf{Theory}	&   &   &   &   \\[3pt]
+            \hline
+            XGRB-RK & 3.18 & 2.40 &  5.28 & 0.912 \\[3pt]
+              XGRB & 4.66 & 3.56 &  7.82 & 0.806 \\
+            \hline
+            \textbf{G.O.A.T.24}	&   &   &   &   \\[3pt]
+            \hline
+            XGRB-RK & 3.27 & 2.47 &  5.46 & 0.907 \\[3pt]
+              XGRB & 4.50 & 3.46 &  7.63 & 0.821 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Extreme Gradient Boost} 
+    \label{tab:xgrb_model}
+\end{table} One of XGRB’s key advantages was its adaptability to both theoretical simulations and real-world high-dimensional datasets such as \textbf{T.D.} and \textbf{G.O.A.T.24}. Across all test cases, it consistently reduced total errors, with baseline MAPE values between 7.63\% and 8.75\% dropping to 5.20\%–5.65\% when combined with residual kriging (RK). This improvement reflects XGRB’s ability to produce strong initial predictions, which RK can then refine by correcting for localized spatial discrepancies. Performance summaries in Table~\ref{tab:xgrb_model} highlight the robustness of the approach. For example:
+\begin{itemize}
+    \item In the \textbf{Modern} dataset, XGRB-RK improved RMSE from 5.09 ppb to 3.41 ppb and $R^{2}$ from 0.771 to 0.899 — a substantial gain in both accuracy and explained variance.
+    \item With \textbf{G.O.A.T.24}, RMSE dropped from 4.50 ppb to 3.27 ppb, MAPE fell from 7.63\% to 5.46\%, and $R^{2}$ increased from 0.821 to 0.907.
+    \item Even in challenging datasets like \textbf{Historical}, where temporal variance can obscure spatial patterns, XGRB-RK improved $R^{2}$ from 0.815 to 0.914.
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Random Forest} \label{rlts:rf} Random Forest consistently produced some of the lowest error rates, especially under the Historical and Theory datasets, where it achieved an MAE as low as 1.19 ppb and a minimal RMSE of 1.56 under the SMaRK methodology. Its effectiveness with relatively simple tuning, 70 trees and unrestricted depth, shows its innate strength as a bagging ensemble method that averages over diverse trees to reduce variance.  The model excelled in datasets characterized by more regular patterns and low noise, indicating its ability to effectively capture essential linear and mildly non-linear patterns. Importantly, Random Forest demonstrated exceptional robustness within the SMaRK framework, maintaining stable performance even in the presence of spatial uncertainty and reduced training bias. Random Forest (RF) yielded some of the lowest absolute errors observed in this study, particularly for H.D. and G.O.A.T.24, where the RMSE values reached 1.81 ppb and 1.52 ppb, respectively, as shown in Table~\ref{tab:rf_model_error}. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline 
+            \textbf{Historical} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\[3pt]
+            \hline
+            RF-RK & 1.38 & 1.03 &  2.26 & 0.983 \\[3pt]
+               RF & 1.81 & 1.35 &  2.96 & 0.971 \\
+            \hline 
+            Modern	&   &   &   &   \\[3pt]
+            \hline
+            RF-RK &  3.48 & 2.61 &  5.76 & 0.895 \\[3pt]
+               RF &  6.50 & 5.08 & 11.4  & 0.631 \\
+            \hline
+            Theory	&   &   &   &   \\[3pt]
+            \hline
+            RF-RK & 3.36 & 2.53 &  5.59 & 0.902 \\[3pt]
+               RF & 5.53 & 4.27 &  9.44 & 0.730 \\
+            \hline  
+            G.O.A.T.24	&   &   &   &   \\[3pt]
+            \hline 
+            RF-RK & 1.41 & 1.05 &  2.33 & 0.983 \\[3pt]
+               RF & 1.52 & 1.13 &  2.50 & 0.980 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Random Forest} 
+    \label{tab:rf_model_error}
+\end{table} This performance highlights RF’s inherent strength as a parallel bagging ensemble. By averaging predictions from multiple uncorrelated trees, it effectively reduces variance while preserving essential signals, thereby facilitating robust predictions without the need for extensive regularization. Model tuning varied across datasets depicted in Table~\ref{tab:rf_model_tuning}, with tree counts ranging from 250 to 500, depth limits from none to 10, and diverse split criteria. 
+
+While this flexibility allowed RF to adapt to various spatial-temporal conditions, it also resulted in certain configurations being over-tuned for specific datasets, particularly those characterized by low variance and highly regular patterns. This over-tuning led to only marginal gains over simpler baselines. For example, \textbf{G.O.A.T.24} performance improved only slightly with residual kriging (RF-RK RMSE = 1.41 ppb vs. RF = 1.52 ppb), indicating that the model was already nearing its maximum potential for that dataset.\begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|ccccc||}
+            \hline 
+            \textbf{Data Set} & \textbf{Trees} & \textbf{$\beta$s} & \textbf{Depth} & \textbf{Criterion} & \textbf{Complexity} \\
+            \hline \hline 
+            Historical & 350 & 0.75 & None & absolute & 0 \\[3pt] 
+            Modern	 & 500 & log2 & 6 & friedman & 0 \\[3pt] 
+            Theory  & 400 & 0.75 & 10 & squared & 0 \\[3pt] 
+            G.O.A.T.24 & 250 & None & None & squared & 0 \\ 
+            \hline
+        \end{tabular}
+    \caption{Tuning Results for Random Forest} 
+    \label{tab:rf_model_tuning}
+\end{table} RF excelled in datasets with relatively low noise and strong, consistent spatial structure, such as \textbf{Historical} and \textbf{Theory}, where RF-RK reduced RMSEs to 1.38 ppb and 3.36 ppb, and achieved $R^{2}$ values above 0.90. In contrast, in more complex datasets like \textbf{Modern} and \textbf{Theory}, performance without RK degraded substantially. For instance, in \textbf{Modern} RMSE rose to 6.50 ppb ($R^{2}$ = 0.631) without RK, indicating that RF’s averaging strategy can overlook finer non-linear or interaction effects in high-dimensional, noisy feature spaces. Residual kriging consistently improved RF performance by correcting local spatial errors, most dramatically in \textbf{Modern} (RMSE improvement from 6.50 to 3.48 ppb, $R^{2}$ from 0.631 to 0.895). Nonetheless, RF’s predictive structure depends heavily on the diversity of tree splits rather than explicitly modeling feature interactions, which limits its upper performance compared to more expressive gradient boosting models.
+
+The primary drawback of Random Forest (RF) lies in its computational demand, especially when dealing with high tree counts and large feature sets. Although GPU acceleration can mitigate this issue, the marginal gains realized in complex datasets compared to XGRB-RK raised questions about its efficiency as the primary modeling choice when unavailable with GPU acceleration. While RF-RK achieved exceptional accuracy in low-noise datasets with regular patterns (e.g., Historical, G.O.A.T.24), XGRB-RK consistently outperformed it in more complex datasets with less computational time. RF alone explicitly models high-order, non-linear interactions and allocates model complexity to the most informative data segments, necessitating GPU processing capabilities for comparable processing times. In datasets like M.D and T.D, XGRB-RK achieved both lower RMSE and higher $R^{2}$ than RF-RK, while avoiding the sharp performance drop seen in RF when RK was removed. This renders XGRB-RK a more reliable choice for operational forecasting, particularly in scenarios where dataset variability and feature complexity cannot be controlled in advance.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Multi-Layered Perceptron} \label{rlts:mlpr} The Multi-Layered Perceptron (MLP) exhibited moderate yet consistent performance across various datasets, revealing significant discrepancies between theoretical models and real-world conditions. Its architectures ranged from compact single-layer setups (e.g., M.D and T.D) to deeper networks (H.D. and G.O.A.T.24), with hidden layer sizes between 3 and 240 units (Table~\ref{tab:mlp_model_tuning}). \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|ccccc||}
+            \hline 
+            \textbf{Dataset} & \textbf{Iterations} & \textbf{Learning Rate} & \textbf{Layer Sizes} & \textbf{Batch sizes}  & \textbf{Activation}  \\
+            \hline \hline 
+            Historical & 183 & inv-scaling & (12, 24, 24, 12, 3) & auto & tanh \\[3pt] 
+            Modern & 200 & adaptive & (50,) & auto & logistic \\[3pt] 
+            Theory & 193 & inv-scaling & (50,) & 11 & logistic \\[3pt] 
+            G.O.A.T.24 & 110 & constant & (120, 120, 48, 3) & 240 & logistic \\
+            \hline
+        \end{tabular}
+        \begin{tabular}{||c|cccc||}
+            \hline 
+            | & epsilon & $\beta_2$ & $\beta_1$ & alpha \\
+            \hline \hline
+            Historical & 10$^{-6}$ &  0.9973 & 0.88 & 0.005 \\[3pt] 
+            Modern & 10$^{-5}$ & 0.996 & 0.90 & 0.01 \\[3pt] 
+            Theory & 10$^{-6}$ & 0.997 & 0.95 & 0.01 \\[3pt] 
+            G.O.A.T.24 & 10$^{-7}$ & 0.999 & 0.903 & 10$^{-6}$ \\
+            \hline
+        \end{tabular}
+    \caption{Tuning Results for Perceptron} 
+    \label{tab:mlp_model_tuning}
+\end{table} The variability in MLP can be attributable to three main factors: sensitivity to noisy, high-dimensional feature sets; overfitting from deep architectures without adequate regularization; and instability in convergence, particularly in the absence of strong initialization schemes. With T.D, MLP achieved relatively low errors (RMSE = 7.65 ppb, MAE = 5.98 ppb, $R^{2}$ = 0.491), and performance degraded sharply in M.D (RMSE = 7.32 ppb, $R^{2}$ = 0.534) and similarly across H.D and G.O.A.T.24 datasets (Table~\ref{tab:mlp_model_error}). The addition of residual kriging (MLP-RK) markedly improved performance across all datasets. RMSE values dropped by roughly 47–51\%, MAPE halved from $\sim$12–13\% to $\sim$5.7–6.0\%, and $R^{2}$ increased from the 0.49–0.56 range to 0.886–0.896. For example, in H.D, RMSE improved from 7.29 to 3.46 ppb and $R^{2}$ rose from 0.538 to 0.896. These gains suggest that the kriging residuals stabilized the model by capturing structured spatial patterns that MLP alone was unable to learn, reducing the burden on the network to fit high-frequency local variability. While MLP-RK achieved substantial error reductions, it still lagged behind XGRB-RK in most datasets. For example, in G.O.A.T.24, MLP-RK’s RMSE of 3.61 ppb and $R^{2}$ of 0.886 were surpassed by XGRB-RK’s 3.27 ppb and 0.907. 
+
+This aligns with the strengths of tree-based boosting methods, which inherently manage mixed feature scales, non-linear interactions, and missing data with less tuning overhead. In contrast, MLP requires careful regularization, larger training data, and stable optimization settings to achieve comparable robustness. While theoretically powerful, MLP was less suitable for practical spatial-temporal O$_3$ estimation without further optimization. As depicted in \ref{tab:mlp_res} the MLP demonstrated clear gains when utilized with the RK pipeline (MLP-RK) across all datasets. \begin{table}[h!]
+    \centering
+        \begin{tabular}{||c|cccc||}
+            \hline
+            \textbf{Historical} & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} & \textbf{$R^{2}$} \\[3pt]
+            \hline 
+            MLP-RK & 3.46 & 2.58 &  5.74 & 0.896 \\[3pt]
+               MLP & 7.29 & 5.66 & 12.7  & 0.538 \\
+            \hline
+            Modern	&   &   &   &   \\[3pt]
+            \hline
+            MLP-RK &  3.47 & 2.60 &  5.76 & 0.895 \\[3pt]
+               MLP &  7.32 & 5.68 & 12.8  & 0.534 \\ 
+            \hline
+            Theory	&   &   &   &   \\[3pt]
+            \hline
+            MLP-RK & 3.47 & 2.60 &  5.76 & 0.895 \\[3pt]
+               MLP & 7.65 & 5.98 & 13.5  & 0.491 \\
+            \hline
+            G.O.A.T.24	&   &   &   &   \\[3pt]
+            \hline
+            MLP-RK & 3.61 & 2.71 &  6.05 & 0.886 \\[3pt]
+               MLP & 7.09 & 5.44 & 12.4  & 0.559 \\
+            \hline
+        \end{tabular}
+    \caption{Error Statistics (ppb) for Perceptron} 
+    \label{tab:mlp_model_error}
+\end{table} Compared to the standard MLP, MLP-RK reduced the RMSE by approximately 47–51 percent and lowered the MAPE from \(\sim\)12 percent to \(\sim\)6 percent. Additionally, \(R^2\) improved from around 0.53–0.57 to 0.88–0.89 (Table~\ref{tab:mlp_res}). These enhancements indicate that the RK $\beta$s and preprocessing stabilize optimization and improve generalization in nonstationary settings. These higher errors when compared to other ensembles are likely due to sensitivity to noise and heterogeneity among $\beta$s. While deeper MLPs can model nonlinearity more effectively, the plain MLP consistently achieves lower errors and higher \(R^2\) with RK enhancements in the AOI. Additional regularization (e.g., weight decay, dropout), batch normalization, early stopping with stronger patience, and re-initialization sweeps could further narrow the gap, but tree-based baselines remain competitive given their robustness and lower tuning burden in this task. Despite the tendencies noted in thesis thesis, MLP is the future of this project given the numerous options available for large, image-based datasets. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Residual Kriging Enhancements} \label{rlts:rkfinal} Given the area's minimal elevation change, drift was likely introduced due to the absence of latitudinal and longitudinal gradients. Residual kriging accounts for the spatial dependence of predicted errors; thus, the relationship between prediction, residuals, and location may show variation over flat terrains, influenced by known trends such as the position of monitors or changes in elevation (slope), leading to spatial drift (\cite{oliver_tutorial_2014}). Drift arising from established spatial trends over the AOI can be integrated by treating locations as auxiliary variables, as seen in a GIS-based analysis of soil samples (\cite{anand_gis-based_2021}). Initially, some machine learning models were capable of adequately predicting certain seasons using a basic implementation of residual kriging. 
+
+Upon further investigation and understanding of the models, all statistical models were significantly enhanced by applying residual kriging to the estimated error at each monitoring location. Despite a tendency to underpredict values at certain locations, the overall distribution of predicted values improved markedly. All feature training sets provided sufficient variation to apply residual kriging; however, more complex ensembles did not necessarily yield better results. Both RF and MLP exhibited tendencies to overpredict and underpredict, introducing greater spatial correlation to the errors and thereby enhancing accuracy when these corrections were reintegrated into the model. This approach offered a more comprehensive trend of residual values. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Drift Specification - Fourier Series} \label{rlts:driftres} Fourier series' were seen in studies to better integrate pollutant signals into modeling schema. While not incorporated with RK (e.g., \cite{flood_evaluating_2024}, \cite{kumar_integrated_2015}, \cite{plocoste_temporal_2017}) a Fourier series provides a reduction formula for any power wave function. These wave equations can be applied over an infinite state, such as those described by raster models, where individual cells can vary in size at the discretion of the user. When applied to RK drift weights, they facilitate a nearly exact determination of DAMO$_3$ uncertainty at each pixel in response to changes in latitude and longitude from monitor distributions. Utilizing a Fourier series relationship for functional drift proved to be the most effective method for addressing areas with either no monitors or significant variations in detected DAMO$_3$ concentrations. This approach excels due to its capacity to correlate nearby monitor locations while effectively managing unknown locations. 
+
+If two functions are periodic with the same period, then any linear combination of those functions is also periodic with that same period \parencite{woods2012}. The summation of these functions $a_0 + \sum_{n=1}^\infty (a_n\cos nx +b_n\sin nx)$ has known period of $2\pi$. This sum is the Fourier series, where $a_i,b_i$ are Fourier coefficients. This offers an alternative method for representing a function as an infinite series. A Fourier series converges to the function $f(x)$ if the function is piecewise continuous and has both a left-hand and a right-hand derivative at every point in its domain. At points of discontinuity, the Fourier series converges to the average of the left and right limits at those points.
+
+The Fourier series incorporated into the SMaRK method provided the most accurate representation of latitudinal and longitudinal drift when compared to point drift and specified drift in the kriging function due to their precision in estimating URK weights mentioned in chapter \ref{methods:urkt}. While elevation-specified point drift and sinusoidal longitude and latitude drift enabled the model to account for significant changes in surface ozone over small areas, the Fourier series can translate any wave equation into an infinite sum of sines and cosines. Given its ability to demonstrate various identities, it is not surprising that the Fourier series emerged as the most effective drift function. For example, the Fourier series of $\sin^2 x$ is $\frac{1}{2}-\frac{1}{2}\cos(2x)$, an identity reduction of the law of cosines. These forms of reduction offer the most accuracy and precision when estimating RK drifts.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Final Images and Outputs} \label{rlts:imgsandouts} The high-resolution DAMO$_3$ imagery effectively captured urban spatial patterns, potentially more accurately than DAMO$_3$ models employing ML/AI techniques with CTM-based $\beta$ approaches. Given that the methodology is largely similar, improvements can be attributed to the incorporation of RK estimated values into the overall depiction of PHOTUC. Although some models alone predicted lower errors than those utilizing residual kriging implementations, the statistical model enhanced by residual kriging achieved the lowest overall error. \begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{ThesisFilePkg//figs/maps/smark_2019-01-01.png}
+    \caption{$\beta$s, Complex Trend, and Residual Krige Results for DAMO$_3$ Predictions on January 1st, 2019}
+    \label{fig:dem_o3_2019}
+\end{figure} Random months illustrating the complete display of surface ozone maps for January 2019, March 2020, May 2021, July 2022, September 2023, and November 2024 can be seen in Appendix \ref{appendixB} through \ref{appendixF} starting on page 178. All trends, statistics, and overall results described in this chapter and the next can be reviewed here as well. T.D was the final data set utilized in PHOTUC; multivariate depictions of DAMO$_3$ for the first of each month in the associated financial year can be seen in Maps \ref{appmap:azdem_2019} to \ref{appmap:demo3_2023}, creating ten unique maps with the best overall result from the SMaRK process, XGRB-RK.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Trends Over PHOTUC for Five Months} \label{rlts:photuctrends} Aside from high altitudes, which generally exhibit high concentrations, most of these areas are subjected to ample heat, resulting in larger RK corrections due to exacerbated DAM$_3$ in major urban areas. After maps \ref{appmap:azdem_2019} to \ref{appmap:demo3_2023}, the resulting $\beta$s, ML trend, and RK outputs can be seen. XGRB-RK predictions were utilized to illustrate DAMO$_3$ through the greater Phoenix and Tucson regions. Some urban census tracts in Phoenix and Tucson, which are more exposed, display below-average incomes and higher population densities; this further underscores the need for research across different AOIs with accurate, high-resolution DAMO$_3$ predictions to identify these communities. 
+
+The randomly selected days primarily highlight communities that tend to have higher income, larger mean/median skew, and above-average DAMO$_3$ concentrations. The overall predicted concentration of O$_3$ for each county was compared to its average monitor value. Notably, the distribution of monitors per county was skewed towards Maricopa, which has 20 monitors compared to Pima (5) and Pinal (3). It’s no surprise the distribution of average concentrations was slightly skewed towards Maricopa. Nevertheless, both Phoenix and Tucson displayed similar trends, with higher concentrations observed following increases in either heat or NO$_2$. 
+

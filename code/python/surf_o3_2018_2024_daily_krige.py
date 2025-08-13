@@ -21,6 +21,7 @@ from rasterio.mask import mask
 from rasterio import transform as riotransform
 from rasterio.enums import Resampling
 from rasterio.features import rasterize
+plt.rcParams['font.family'] = 'Century Schoolbook'
 np.random.seed(42)
 ######################################################################################################################################################
 ### Function Junction
@@ -255,7 +256,7 @@ def get_feature_dict(col_names,
                                      ['arsl_idx'],# True
                                      ['cf','ctp','cth','cbp','cbh'],# True
                                      ['no2_cnd','strat_no2'],# True
-                                     ['carmon_cnd'],# True
+                                     ['carmon_cnd','h2o_cnd'],# True
                                      ['tco_nd','tco_temp'],# True
                                      ['ozone'],# False
                                      ['ndvi'],# False
@@ -534,7 +535,6 @@ days_jun_2022 = pd.date_range("2022-06-01", "2022-06-30").strftime("%Y-%m-%d").t
 days_apl_2023 = pd.date_range("2023-04-01", "2023-04-30").strftime("%Y-%m-%d").tolist()
 # Create rasters with SMaRK method
 for yay in days_jan_2019:
-  print(yay)
   SMaRK_raster_predictions(yay, predictive_model,predictive_features,predictive_params,plot_features = True)
 for yay in days_oct_2020:
   SMaRK_raster_predictions(yay, predictive_model,predictive_features,predictive_params,plot_features = True)

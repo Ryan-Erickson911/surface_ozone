@@ -1,9 +1,10 @@
 # Predictions:
 # SM,RK
 # Final
+import os
+import re
 import pandas as pd
 import geopandas as gpd
-import os
 import numpy as np
 from datetime import datetime
 import rasterio as rio
@@ -26,6 +27,12 @@ import numpy.ma as ma
 import matplotlib.patheffects as path_effects
 from rasterio.mask import mask
 from shapely.geometry import mapping
+
+import bibtexparser
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from matplotlib_venn import venn3
+from wordcloud import WordCloud, STOPWORDS
 
 plt.rcParams['font.family'] = 'Century Schoolbook'
 ### Paths
@@ -77,35 +84,26 @@ def make_model_figure(predictive_model,predictive_features,fname,title,features=
     predictor=predictive_model[['site_group','max_value']].copy()
     palette=sns.color_palette("colorblind",n_colors=predictor['site_group'].nunique())
     predictor['max_value']=predictor['max_value']*1000  # ppm to ppb
-    fig=plt.figure(figsize=(7.5,10))
-    gs=gridspec.GridSpec(5,3,figure=fig)
-    ax_box=fig.add_subplot(gs[0,0:3])
-    sns.boxplot(data=predictor,x='max_value',y='site_group',hue='site_group',ax=ax_box,palette=palette,legend=False)
-    ax_box.axvline(x=70,color='red',linestyle='--',linewidth=1.5)
-    ax_box.text(70.5,0.5,'EPA Standard',color='red',fontsize=10,va='center')
-    ax_box.set_title('Surface O$_{3}$ (ppb)')
-    ax_box.set_xlabel('')
-    ax_box.set_ylabel('')
-    ax_box.set_yticklabels([])
-    ax_box.set_yticks([])
-    ax_box.grid(True)
+    predictive_model[features]=predictive_model[features].copy()*1000
+    fig=plt.figure(figsize=(7.5,5))
+    gs=gridspec.GridSpec(4,3,figure=fig)
     unique_groups=np.unique(predictor[['site_group']])
     patches=[Patch(color=palette[i],label=label) for i,label in enumerate(unique_groups)]
     positions=[
+    (0,0),(0,1),(0,2),
     (1,0),(1,1),(1,2),
     (2,0),(2,1),(2,2),
-    (3,0),(3,1),(3,2),
-    (4,0),(4,1),(4,2)]
-    for (row,col),feat in zip((pos for pos in positions if pos != (4,1)),features):
+    (3,0),(3,1),(3,2)]
+    for (row,col),feat in zip((pos for pos in positions if pos != (0,1)),features):
         ax=fig.add_subplot(gs[row,col])
-        sns.histplot(data=predictive_features,x=feat,hue='site_group',kde=True,
+        sns.histplot(data=predictive_model,x=feat,hue='site_group',kde=True,
                     legend=False,element='step',stat='density',common_norm=False,ax=ax,palette=palette,bins=25)
-        ax.set_title(f'{names_dict[feat]}')
+        ax.set_title(f'{namdict[feat]}',fontsize=8)
         ax.set_xlabel('')
         ax.set_ylabel('')
+        ax.set_yticks([])
         ax.grid(True)
-    fig.suptitle(f'Surface O$_{3}$ Concentrations\n{title} Dataset Predictions',fontsize=12)
-    legend_ax=fig.add_subplot(gs[4,1])
+    legend_ax=fig.add_subplot(gs[0,1])
     legend_ax.axis('off')
     legend_ax.legend(
         handles=patches,
@@ -133,10 +131,10 @@ def get_metrics(df):
       group_metrics.append({
           'site_group': group,
           'Model': col,
-          'mean': tmean,
-          'median': tmedian,
-          'min': tmin,
-          'max': tmax,
+          'Mean': tmean,
+          'Median': tmedian,
+          'Min': tmin,
+          'Max': tmax,
           'RMSE': rmse,
           'MAE': mae,
           'MSE': mse,
@@ -201,16 +199,16 @@ def add_error_plot(ax,testing_df,name,
     ax.text(0.5,0.985,f"{name} Results",
             transform=ax.transAxes,
             ha='center',va='top',
-            fontsize=12,weight='bold')
+            fontsize=10,weight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(models.values())
+    ax.set_xticklabels(models.values(),size=10)
     ax.legend(fontsize=8)
     for rects,pl,al in [(rects1,'','%'),(rects2,'',''),(rects3,'',''),
                           (rects4,'',''),(rects5,'',''),(rects6,'','%'),
                           (rects7,'',''),(rects8,'',''),(rects9,'',''),
                           (rects10,'','')]:
         addlabel(ax,rects,plabel=pl,alabel=al)      
-def make_corr_plot(df,feats,fname,circ_size=1000):
+def make_corr_plot(df,feats,fname,circ_size=1000,fgsz=(8,8.5)):
     beta_dict=dict(zip(df_variable_codes_df['Variable Name'],df_variable_codes_df['Variable Code']))
     path_to_final_images=os.path.join(path_to_images,'correlations')
     os.makedirs(path_to_final_images,exist_ok=True) 
@@ -220,7 +218,7 @@ def make_corr_plot(df,feats,fname,circ_size=1000):
     corr_pretty=corr.rename(index=names_dict,columns=names_dict)
     corr_pretty=corr_pretty.rename(index=beta_dict,columns=beta_dict)
     n=corr_pretty.shape[0]
-    fig,ax=plt.subplots(figsize=(10,10))
+    fig,ax=plt.subplots(figsize=fgsz)
     cmap=plt.get_cmap('RdBu_r')
     for i in range(n):
         for j in range(i):
@@ -232,26 +230,29 @@ def make_corr_plot(df,feats,fname,circ_size=1000):
                         else 'black')
             ax.scatter(i,j,s=size,color=color,edgecolors='white',linewidth=0.5)
             ax.text(j,i,
-                    f"{r:.2f}",
+                    f"{abs(r):.2f}",
                     ha='center',va='center',
                     color=text_color,
-                    fontsize=7)
+                    fontsize=8)
     for i,raw in enumerate(corr_pretty.columns):       
-        ax.text(i,i,f'{raw}',ha='center',va='center',fontsize=12,color='black')
+        ax.text(i,i,f'{raw}',ha='center',va='center',fontsize=8,color='black')
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_xticks(np.arange(n+1) - 0.5,minor=True)
     ax.set_yticks(np.arange(n+1) - 0.5,minor=True)
     ax.grid(which='minor',color='lightgrey',linestyle='-',linewidth=0.5)
     ax.grid(which='major',visible=False)
+    ax.tick_params(axis='both', which='both', length=0)
     ax.invert_yaxis()
     sm=plt.cm.ScalarMappable(cmap=cmap,norm=plt.Normalize(vmin=-1,vmax=1))
     sm.set_array([])
-    fig.colorbar(sm,ax=ax,pad=0.04,fraction=0.03).set_label("Pearson $r$",rotation=270,labelpad=15)
-    ax.set_title("Correlation graph between input variables",pad=20,fontsize=16)
+    cbar = fig.colorbar(sm, ax=ax, pad=0.01, fraction=0.01, ticks=[-1, 1], aspect=60)
+    cbar.set_label("Pearson $r$", rotation=270, labelpad=0.01,fontsize=8)
+    cbar.ax.yaxis.label.set_size(8)
+    cbar.ax.tick_params(labelsize=8)
     plt.tight_layout()
     plt.show()
-    fig.savefig(os.path.join(path_to_final_images,f'{fname}.png'))
+    # fig.savefig(os.path.join(path_to_final_images,f'{fname}.png'))
 def plot_model_rk_layout(
   day,
   feature_stack_path,
@@ -368,7 +369,6 @@ def plot_model_rk_layout(
   cbar3.ax.yaxis.set_label_position('left') 
   cbar3.ax.yaxis.set_label_text(f'Scaled $\\beta_i$ (unitless)', fontsize=10)
   cbar3.ax.yaxis.labelpad = -16
-  plt.suptitle(f"Map 4.11",fontsize=12,y=0.985)
   plt.savefig(final_output_path,dpi=300)
   plt.close()
 def smark_plot(
@@ -380,21 +380,20 @@ def smark_plot(
   fin=os.path.join(fina,f'ozone_{day}.png')
   os.makedirs(fina,exist_ok=True)
   rmse=round(np.sqrt(mean_squared_error(df[df['date']==day]['max_value'],df[df['date']==day]['xgrb_rk_preds']))*1000,3)
-  mape=round(mean_absolute_percentage_error(df[df['date']==day]['max_value'],df[df['date']==day]['xgrb_rk_preds'])*100,2)
   mean=round(df[df['date']==day]['xgrb_rk_preds'].mean()*1000,2)
   max=round(df[df['date']==day]['xgrb_rk_preds'].max()*1000,2)
   min=round(df[df['date']==day]['xgrb_rk_preds'].min()*1000,2)
-  stats=[max,mean,min,rmse,f'{mape}%']
-  stat_labels=['Max','Mean','Min','RMSE','MAPE']
-  stat_text='Error Metric\n'+'\n'.join([f'{label}: {value}' for label,value in zip(stat_labels,stats)])
+  stats=[max,mean,min,rmse]
+  stat_labels=['Max','Mean','Min','RMSE']
   day_num=int(day[-2:])
   new_day=datetime.strptime(day,'%Y-%m-%d').replace(day=day_num).strftime('%B {S},%Y')
   formatted_day=new_day.replace('{S}',suffix(day_num))
+  stat_text=f'{formatted_day}\n'+'\n'.join([f'{label}: {value}' for label,value in zip(stat_labels,stats)])
   elev=os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","data",'tifs','elevation','elevation.tif')
   surface_ozone=os.path.join(yfin_plot,f'surf_o3_{day}.tif')
-  color_map={'Maricopa County':'#176d9c','Pinal County':'#029e73','Pima County':'#c38820'}
+  color_map={'Maricopa':'#176d9c','Pinal':'#029e73','Pima':'#c38820'}
   photuc=gpd.read_file(os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","data",'mapping','income_pop_2020_2023','income_pop_2020_2023.shp'))
-  photuc['color']=photuc['county'].map(color_map)
+  photuc['color']=photuc['county'].str.replace(r' County$', '', regex=True).map(color_map) 
   target_crs="EPSG:26949"
   shapes=[mapping(geom) for geom in photuc.geometry]
   with rio.open(elev) as src:
@@ -421,25 +420,27 @@ def smark_plot(
   hillshade=ls.shade(clipped_elev,cmap=cm.Greys,vert_exag=0.00001137,dx=250,dy=250)
   height,width=clipped_elev.shape
   extent=[clipped_transform[2],clipped_transform[2]+clipped_transform[0]*width,clipped_transform[5]+clipped_transform[4]*height,clipped_transform[5]]
-  fig,ax=plt.subplots(figsize=(6,5.5))
+  fig,ax=plt.subplots(figsize=(4,3.5))
   ozone_img=ax.imshow(clipped_ozone,cmap='Blues',extent=extent)
-  fig.colorbar(ozone_img,ax=ax,fraction=0.025,pad=0.02,label=f'O$_3$ (ppb)')
-  ax.tick_params(labelsize=8)
-  photuc.boundary.plot(ax=ax,edgecolor='black',linewidth=0.75,alpha=0.5)
-  photuc.boundary.plot(ax=ax,edgecolor=photuc['color'],linewidth=0.65,alpha=0.65)
+  cbar=fig.colorbar(ozone_img,ax=ax,fraction=0.025,pad=0.02,label=f'O$_3$ (ppb)')
+  cbar.ax.yaxis.label.set_size(6)
+  cbar.ax.tick_params(labelsize=6)
+  ax.tick_params(labelsize=6)
+  photuc.boundary.plot(ax=ax,edgecolor=photuc['color'],linewidth=0.65,alpha=0.45)
   legend_patches=[Patch(edgecolor=color,fill=False,label=county) for county,color in color_map.items()]
-  ax.legend(handles=legend_patches,title="Counties",loc='lower left',frameon=True,framealpha=0.9,facecolor='white',edgecolor='black',fontsize=8,title_fontsize=8,labelspacing=0.25)
-  ax.text(0.98,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=8,bbox=dict(boxstyle='round,pad=0.5',facecolor='white',edgecolor='black',alpha=0.9))
-  ax.set_title(f"Predicted Surface O$_3$ Concentrations",loc='center',fontsize=10)
+  ax.legend(handles=legend_patches,title="Counties",loc='lower left',frameon=True,framealpha=0.9,facecolor='white',edgecolor='black',fontsize=6,title_fontsize=6,labelspacing=0.25)
+  ax.text(1.05,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=6,bbox=dict(boxstyle='round,pad=0.5',facecolor='white',edgecolor='black',alpha=0.9))
   ax.set_axis_off()
   fig.tight_layout()
+  # plt.show()
   fig.savefig(fin,dpi=300)
   plt.close()
+  
+
 ##### Only need to run shape file creation and preprocessing once #####
 # county_names={'013': 'Maricopa County','019': 'Pima County','021': 'Pinal County'}
 # shape2019=gpd.read_file(os.path.join(mapping_data,'tracts2019','tiger_census_2019.shp'))
 # shape2020_2023=gpd.read_file(os.path.join(mapping_data,'tiger_2023_tracts','tl_2023_04_tract.shp'))
-
 # photuc_shape=shape2020_2023.loc[shape2020_2023['COUNTYFP'].str.contains('|'.join(county_names.keys())),['GEOID','NAMELSAD','COUNTYFP','geometry']]
 # photuc_shape.loc[0:,'COUNTYFP']=photuc_shape['COUNTYFP'].apply(lambda x: county_names.get(x))
 # photuc_shape.columns=['GEOID','tract','county','geometry']
@@ -503,8 +504,9 @@ theory_features['site_group']=theory_features['site_id'].astype(str).str[:4].map
 goat_features=pd.read_csv(os.path.join(path_to_final_tables,'goat_model_features.csv'),index_col=0)
 goat_features['site_group']=goat_features['site_id'].astype(str).str[:4].map(site_group_names)
 
-names_dict={
-    'max_value':'Average Monthly O$_3$',
+hist_results=pd.read_csv(os.path.join(path_to_final_tables,'hist_model_results_seasons.csv'),index_col=0)
+namdict={
+    'max_value':'DAMO$_3$',
     'elevation': 'Elevation',
     'precip': 'Precipitation',
     'spf_hmdty': 'Specific Humidity',
@@ -529,56 +531,99 @@ names_dict={
     'carmon_cnd' : 'Carbon Monoxide',
     'h2o_cnd' : 'Water Column Density',
     'h2o_energy' : 'Water Column Energy', 
-    'tcd_formald' : 'Formaldehyde',
-    'tcd_formald_slant' : 'Formaldehyde Slant Column',
+    'tcd_formald' : 'Formaldehyde (CH$_2$O)',
+    'surf_ch2o' : f'Surface CH$_2$O', 
+    'tcd_formald_slant' : 'CH$_2$O Slant Column',
     'cf' : 'Cloud Fraction',
     'cloud_radius': 'Estimated Cloud Radius',
-    'ln_cloud_energy': 'Estimated Cloud Energy',
+    'ln_cloud_energy': 'Estimated Cloud Presence',
     'ke_oz': 'TOMs/OMI Kinetic Energy',
     's5p_ke_oz': 'S5P Kinetic Energy',
-    'down_srad_moving_wkly_average' : 'D.S Radiation WkMA',
-    'wdsp_moving_wkly_average' : 'Average Wind Speed WkMA',
-    'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit WkMA',
-    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O$_3$ WkMA',
-    'max_surf_temp_moving_wkly_average' : 'Max Surface Temperature WkMA',
-    'tco_nd_moving_wkly_average' : 'S5P 1km WkMA',
-    'tco_temp_moving_wkly_average' : 'S5P TCO Temperature WkMA',
+    'down_srad_moving_wkly_average' : 'D.S Radiation.WkMA',
+    'wdsp_moving_wkly_average' : 'Average Wind Speed.WkMA',
+    'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit.WkMA',
+    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O$_3$.WkMA',
+    'max_surf_temp_moving_wkly_average' : 'Max Surface Temperature.WkMA',
+    'tco_nd_moving_wkly_average' : 'S5P 1km.WkMA',
+    'tco_temp_moving_wkly_average' : 'S5P TCO Temperature.WkMA',
     'Spring':'Spring',
     'Summer':'Summer',
     'Winter':'Winter',
-    'adaboost_preds':'Adaptive Boost',
-    'gb_preds':'Gradient Boost',
-    'xgrb_preds':'Extreme G. Boost',
-    'rf_preds':'Random Forest',
-    'mlper_preds':'MLPercepetron',
-    'adaboost_rk_preds':'AdaptiveRK',
-    'gb_rk_preds':'GradientRK',
-    'xgrb_rk_preds':'ExtremeRK',
-    'rf_rk_preds':'RFRK',
-    'mlper_rk_preds':'MLPerRK'}
+    'adaboost_preds':'ADA',
+    'gb_preds':'GB',
+    'xgrb_preds':'XGRB',
+    'rf_preds':'RF',
+    'mlper_preds':'MLP',
+    'adaboost_rk_preds':'ADA-RK',
+    'gb_rk_preds':'GB-RK',
+    'xgrb_rk_preds':'XGB-RK',
+    'rf_rk_preds':'RF-RK',
+    'mlper_rk_preds':'MLP-RK'}
 
-variables=['max_value','ndvi','down_srad','down_srad_moving_wkly_average','ke_oz','s5p_ke_oz','max_surf_temp','vprps_def','tco_temp_moving_wkly_average','tco_temp','strat_no2','max_surf_temp_moving_wkly_average','min_surf_temp','vprps_def_moving_wkly_average','Winter','Summer','bnid','wdsp_moving_wkly_average','h2o_energy','h2o_cnd','du_transformation_moving_wkly_average','cf','tcd_formald_slant','Spring','tcd_formald','tco_nd_moving_wkly_average','no2_cnd','spf_hmdty','surf_no2','du_transformation','arsl_idx','tco_nd']
-variable_codes=[f'$y(\\beta)$']+[f"$\\beta_{{{i+1}}}$" for i in range(len(variables)-1)]
-variable_names=[names_dict.get(name,name) for name in names_dict.keys() if name in variables]
-df_variable_codes_fin={
-    'Variable Code': variable_codes,
-    'Variable Name': variable_names
-}
-df_variable_codes_df=pd.DataFrame(df_variable_codes_fin) # G.O.A.T.24 columns and NDVI should suffice,massive pearson should already be created from model_comparison.
-# site_group_names={'4013': 'Maricopa','4019': 'Pima','4021': 'Pinal'}
-# all_in_project=['max_value','ndvi']+corr_compare[0:30]['pearson_feature'].values.tolist()
-# all_in_project['site_group']=all_in_project['site_id'].astype(str).str[:4].map(site_group_names)
-# stats=pd.DataFrame(all_in_project.describe().T).drop('site_id')
-# stats=stats[['mean','std','min','max','50%']]
-# stats.columns=['mean','std','min','max','median']
-# max_value_stats=goat_results['max_value'].describe()[['mean','std','min','max','50%']]
-# max_value_stats.index=['mean','std','min','max','median']
-# stats.loc['max_value']=max_value_stats
-# stats.index=[names_dict.get(name,name) for name in stats.index]
-# stats=stats.rename_axis("Variable Name").reset_index()
-# df_variable_codes_df=df_variable_codes_df.merge(stats,on="Variable Name",how="left")
-# df_variable_codes_df.to_csv(os.path.join(path_to_images,'variable_dict.csv'))
-# make_corr_plot(all_in_project,all_in_project,'a31_corrs',circ_size=400)
+names_dict={
+    'max_value':'DAMO$_3$',
+    'elevation': 'Elevation',
+    'precip': 'Precipitation',
+    'spf_hmdty': 'Specific Humidity',
+    'down_srad': 'Downward Shortwave Radiation',
+    'min_surf_temp': 'Min Surface Temperature',
+    'max_surf_temp': 'Max Surface Temperature',
+    'wdsp': 'Average Wind Speed',
+    'bnid': 'Burn Index',
+    'vprps_def': 'Mean Pressure Deficit',
+    'ndvi': 'NDVI',
+    'evi' : 'Enhanced Vegetation Index',
+    'ntl': 'Nighttime Lights',
+    'ozone': 'Dobson Unit',
+    'du_transformation': 'TOMS/OMI 10km O$_3$',
+    'arsl_idx': 'Aerosol Index',
+    'no2_cnd': 'Tropospheric NO$_2$',
+    'strat_no2': 'Stratospheric NO$_2$',
+    'surf_no2': 'Surface NO$_2$',
+    'cloud_volumn': 'Estimated Cloud Volumn',
+    'tco_nd': 'S5P 1km',
+    'tco_temp': 'S5P TCO$_3$ Temperature',
+    'carmon_cnd' : 'Carbon Monoxide',
+    'h2o_cnd' : 'Water Column Density',
+    'h2o_energy' : 'Water Column Energy', 
+    'tcd_formald' : 'Formaldehyde (CH$_2$O)',
+    'surf_ch2o' : f'Surface CH$_2$O', 
+    'tcd_formald_slant' : 'CH$_2$O Slant Column',
+    'cf' : 'Cloud Fraction',
+    'cloud_radius': 'Estimated Cloud Radius',
+    'ln_cloud_energy': 'Estimated Cloud Presence',
+    'ke_oz': 'TOMs/OMI Kinetic Energy',
+    's5p_ke_oz': 'S5P Kinetic Energy',
+    'down_srad_moving_wkly_average' : 'D.S Radiation.WkMA',
+    'wdsp_moving_wkly_average' : 'Average Wind Speed.WkMA',
+    'vprps_def_moving_wkly_average' : 'Mean Pressure Deficit.WkMA',
+    'du_transformation_moving_wkly_average' : 'TOMS/OMI 10km O$_3$.WkMA',
+    'max_surf_temp_moving_wkly_average' : 'Max Surface Temperature.WkMA',
+    'tco_nd_moving_wkly_average' : 'S5P 1km.WkMA',
+    'tco_temp_moving_wkly_average' : 'S5P TCO Temperature.WkMA',
+    'Spring': 'Spring',
+    'Summer': 'Summer',
+    'Winter': 'Winter',
+    'Fall': 'Fall'}
+
+variables=np.unique(hist_feats+modern_feats+goat_feats+best_theory_feats).tolist()
+site_group_names={'4013': 'Maricopa','4019': 'Pima','4021': 'Pinal'}
+all_in_project=x_seasons[['site_id','date','max_value']+[col for col in x_seasons.columns if col in variables]].copy()
+variable_names=[namdict.get(name,name) for name in namdict.keys() if name in list(all_in_project.columns)]
+variable_codes=[f'$y(\\beta)$']+[f"$\\beta_{{{i+1}}}$" for i in range(len(variable_names)-1)]
+df_variable_codes_fin={'Variable Code': variable_codes,'Variable Name': variable_names}
+df_variable_codes_df=pd.DataFrame(df_variable_codes_fin)
+all_in_project['site_group']=all_in_project['site_id'].astype(str).str[:4].map(site_group_names)
+all_in_project['max_value'] = all_in_project['max_value']*1000
+all_in_project['strat_no2'] = all_in_project['strat_no2']*1000
+stats=pd.DataFrame(all_in_project.describe().T).drop(['site_id','date'])
+stats=stats[['mean','std','min','max','50%']]
+stats.columns=['mean','std','min','max','median']
+stats.index=[namdict.get(name,name) for name in stats.index]
+stats=stats.rename_axis("Variable Name").reset_index()
+df_variable_codes_df=df_variable_codes_df.merge(stats,on="Variable Name",how='left')
+df_variable_codes_df.to_csv(os.path.join(path_to_images,'variable_dict.csv'))
+make_corr_plot(all_in_project,all_in_project,'a27_corrs',circ_size=150,fgsz=(8,6))
 
 # These create the histograms and will need to be imported to gimp for the overlay
 make_model_figure(hist_results,hist_results,'hist_model_preds','Historical',features=list(hist_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
@@ -587,77 +632,138 @@ make_model_figure(theory_results,theory_results,'theory_model_preds','Theoretica
 make_model_figure(goat_results,goat_results,'goat_model_preds','G.O.A.T.24',features=list(goat_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 
 # Dataset Corr Plots
-make_corr_plot(hist_results,hist_features,'hist_corrs')    
-make_corr_plot(modern_results,modern_features,'modern_corrs')    
-make_corr_plot(theory_results,theory_features,'theory_corrs')
-make_corr_plot(goat_results,goat_features,'goat24',circ_size=500)    
+make_corr_plot(hist_results,hist_features,'hist_corrs',fgsz=(5,3),circ_size=200)    
+make_corr_plot(modern_results,modern_features,'modern_corrs',fgsz=(5,3),circ_size=200)    
+make_corr_plot(theory_results,theory_features,'theory_corrs',fgsz=(5,3),circ_size=200)
+make_corr_plot(goat_results,goat_features,'goat24',fgsz=(6.5,4),circ_size=100)  
 
-# All Used Features Corr Plots
-all_in_project=pd.merge(goat_features,hist_features[['site_id','date','ndvi']])
-all_in_project=pd.merge(all_in_project,modern_features[['site_id','date','tco_nd_moving_wkly_average']])
-make_corr_plot(goat_results,all_in_project,'a25_corrs',circ_size=500)
-
-len(hist_features.drop(columns=['site_id','date','site_group']).columns)
-len(modern_features.drop(columns=['site_id','date','site_group']).columns)
-len(theory_features.drop(columns=['site_id','date','site_group']).columns)
-len(goat_features.drop(columns=['site_id','date','site_group']).columns)
+dict_hist = list(hist_features.drop(columns=['site_id','date','site_group']).columns)
+dict_modern = list(modern_features.drop(columns=['site_id','date','site_group']).columns)
+dict_theory = list(theory_features.drop(columns=['site_id','date','site_group']).columns)
+dict_goat = list(goat_features.drop(columns=['site_id','date','site_group']).columns)
 
 hist_best_model,hist_best_stats=get_metrics(hist_results)
+hist_best_stats['Model'] = [namdict.get(m) for m in hist_best_stats['Model'] if m in namdict]
 modern_best_model,modern_best_stats=get_metrics(modern_results)
+modern_best_stats['Model'] = [namdict.get(m) for m in modern_best_stats['Model'] if m in namdict]
 theory_best_model,theory_best_stats=get_metrics(theory_results)
+theory_best_stats['Model'] = [namdict.get(m) for m in theory_best_stats['Model'] if m in namdict]
 goat_best_model,goat_best_stats=get_metrics(goat_results)
+goat_best_stats['Model'] = [namdict.get(m) for m in goat_best_stats['Model'] if m in namdict]
 
-# All Model Error Stats Graphic
-testing_dfs=[hist_best_stats,modern_best_stats,theory_best_stats,goat_best_stats]
-names=['H.D.13','M.D.13','T.D.10','G.O.A.T.24']
-fig,axes=plt.subplots(2,2,figsize=(12,16))
-axes_flat=axes.ravel()
-for ax,df,name in zip(axes_flat,testing_dfs,names):
-    add_error_plot(ax,df,name)
-axes[0,1].set_yticklabels('')
-axes[1,1].set_yticklabels('')
-fig.tight_layout(h_pad=0,w_pad=0)
-plt.show()
 
-# Boxplots for Gimp
-sm_models={'adaboost_p':'Adaptive Boost','gb_p':'Gradient Boost','xgrb_p':'Extreme Gradient Boost','rf_p':'Random Forest','mlper_p':'Perceptron'}
-smrk_models={'adaboost_rk':'Adaptive Boost','gb_rk':'Gradient Boost','xgrb_rk':'Extreme Gradient Boost','rf_rk':'Random Forest','mlper_rk':'Perceptron'}
+def make_ot_plot_datasets(model: str, filename: str): 
+    out = os.path.join(
+        os.path.expanduser('~'),
+        'Documents', 'Github', 'surface_ozone', 'writing', 'imgs', 'overtime',
+        f'{filename}'
+    )
 
-plot_labels=['Site Measurements'] + list(sm_models.values())
-model_keys=list(sm_models.keys())
-model_cols=hist_results.columns[hist_results.columns.str.startswith(tuple(model_keys))]
-selected=hist_results[['max_value'] + list(model_cols)]
-fig,axes=plt.subplots(6,1,figsize=(8.5,11),sharex=True)
-for ax,col in zip(axes,selected.columns):
-    ax.boxplot(selected[col].dropna(),vert=False,patch_artist=True,
-               boxprops=dict(facecolor='lightblue',color='black'),
-               medianprops=dict(color='red'))
-    ax.set_title(names_dict.get(col),fontsize=10)
-    ax.grid(True,axis='x')
-    ax.set_yticks([])
-fig.suptitle("Boxplots of Actual and Model Predictions",fontsize=16)
-fig.tight_layout()
-plt.show()
+    # Extract needed columns
+    hist_daily = hist_results[['date', 'max_value', f'{model}_preds', f'{model}_rk_preds']].copy()
+    modern_daily = modern_results[['date', 'max_value', f'{model}_preds', f'{model}_rk_preds']].copy()
+    theory_daily = theory_results[['date', 'max_value', f'{model}_preds', f'{model}_rk_preds']].copy()
+    goat_daily = goat_results[['date', 'max_value', f'{model}_preds', f'{model}_rk_preds']].copy()
+    for df in [hist_daily, modern_daily, theory_daily, goat_daily]:
+        df['date'] = pd.to_datetime(df['date'])
+    # Aggregate to daily means if multiple measurements per date
+    hist_daily = hist_daily.groupby('date').mean().reset_index()
+    modern_daily = modern_daily.groupby('date').mean().reset_index()
+    theory_daily = theory_daily.groupby('date').mean().reset_index()
+    goat_daily = goat_daily.groupby('date').mean().reset_index()
 
-plot_labels=['Site Measurements'] + list(smrk_models.values())
-model_keys=list(smrk_models.keys())
-model_cols=hist_results.columns[hist_results.columns.str.startswith(tuple(model_keys))]
-selected=hist_results[['max_value'] + list(model_cols)]
-fig,axes=plt.subplots(6,1,figsize=(8.5,11),sharex=True)
-for ax,col in zip(axes,selected.columns):
-    ax.boxplot(selected[col].dropna(),
-               vert=False,
-               patch_artist=True,
-               boxprops=dict(facecolor='lightblue',color='black'),
-               medianprops=dict(color='red'))
-    ax.set_title(names_dict.get(col),fontsize=10)
-    ax.grid(True,axis='x')
-    ax.set_yticks([])
-fig.suptitle("Boxplots of Actual and Model Predictions",fontsize=16)
-fig.tight_layout()
-fig.savefig()
-plt.show()
+    fig, axes = plt.subplots(2, 1, figsize=(7.5, 6.5))
 
+    # First subplot: SM predictions vs in situ
+    axes[0].plot(hist_daily['date'], hist_daily['max_value'] * 1000, label='In Situ', color='purple', lw=2)
+    axes[0].plot(hist_daily['date'], hist_daily[f'{model}_preds'] * 1000, label='SM', color='red', lw=1)
+    axes[0].plot(modern_daily['date'], modern_daily[f'{model}_preds'] * 1000, label='SM', color='blue', lw=1)
+    axes[0].plot(theory_daily['date'], theory_daily[f'{model}_preds'] * 1000, label='SM', color='green', lw=1)
+    axes[0].plot(goat_daily['date'], goat_daily[f'{model}_preds'] * 1000, label='SM', color='orange', lw=1)
+    axes[0].set_xlim(pd.Timestamp('2018-12-01'), pd.Timestamp('2025-01-01'))
+    axes[0].set_xticks([])
+    axes[0].set_xticklabels([])
+
+    # Second subplot: SM+RK predictions
+    axes[1].plot(hist_daily['date'], hist_daily['max_value'] * 1000, label='In Situ', color='purple', lw=2)
+    axes[1].plot(hist_daily['date'], hist_daily[f'{model}_rk_preds'] * 1000, label='H.D', color='red', ls='--', lw=1)
+    axes[1].plot(modern_daily['date'], modern_daily[f'{model}_rk_preds'] * 1000, label='M.D', color='blue', ls='--', lw=1)
+    axes[1].plot(theory_daily['date'], theory_daily[f'{model}_rk_preds'] * 1000, label='L.B.D', color='green', ls='--', lw=1)
+    axes[1].plot(goat_daily['date'], goat_daily[f'{model}_rk_preds'] * 1000, label='G.O.A.T.24', color='orange', ls='--', lw=1)
+    axes[1].set_ylabel('DAMO$_3$ (ppb)', size=8)
+    axes[1].set_xlim(pd.Timestamp('2018-12-01'), pd.Timestamp('2025-01-01'))
+    axes[1].yaxis.set_label_coords(-0.035, 1.05)
+
+    # Legend
+    handles, labels = axes[1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='center left',
+               bbox_to_anchor=(0.045, 0.5),
+               borderpad=0.15, handlelength=1.5, labelspacing=0.25)
+
+    # Match your GUI-adjusted parameters
+    plt.subplots_adjust(top=0.997, bottom=0.035, left=0.055, right=0.975, hspace=0.000, wspace=0.200)
+
+    # Save or show
+    # plt.savefig(out, dpi=300)
+    plt.show()
+
+make_ot_plot_datasets('adaboost','adaboost_all_ds_ot.png')
+make_ot_plot_datasets('gb','gb_all_ds_ot.png')
+make_ot_plot_datasets('xgrb','xgrb_all_ds_ot.png')
+make_ot_plot_datasets('rf','rf_all_ds_ot.png')
+make_ot_plot_datasets('mlper','mlper_all_ds_ot.png')
+
+# melted = theory_results[['date','max_value','xgrb_preds','xgrb_rk_preds','site_group']].copy()  
+# melted['month'] = pd.to_datetime(melted['date']).dt.to_period('M').dt.to_timestamp()
+# counties = {'Maricopa': '#176d9c', 'Pinal': '#029e73', 'Pima': '#c38820'}
+# out = os.path.join(os.path.expanduser('~'),'Documents','Github','surface_ozone','writing','imgs','overtime')
+
+# for county, color in counties.items():
+#   out_ot_path = os.path.join(out,f'{county}_ot.png')
+#   subset = melted[melted['site_group'] == county]
+#   monthly_subset = subset.groupby('month')[['max_value', 'xgrb_preds','xgrb_rk_preds']].mean().reset_index()
+#   fig, axes = plt.subplots(2, 1, figsize=(7, 4))
+#   data_to_plot = [subset['xgrb_preds'] * 1000, subset['xgrb_rk_preds'] * 1000, subset['max_value'] * 1000]
+#   box = axes[0].boxplot(data_to_plot, tick_labels=['SM', 'SM+RK', 'In Situ'], vert=False, patch_artist=True)
+#   colors = ['red', color, 'purple']
+#   for patch, c in zip(box['boxes'], colors):
+#     patch.set_facecolor(c)
+#     patch.set_alpha(0.5)
+#   axes[0].set_xlabel('DAMO$_3$ (ppb)', size=8, labelpad=-10)
+#   axes[0].set_xticks([0, 70, 110])
+#   axes[1].plot(monthly_subset['month'], monthly_subset['max_value'] * 1000, label='In Situ', color='purple', linestyle='-', linewidth=2)
+#   axes[1].plot(monthly_subset['month'], monthly_subset['xgrb_preds'] * 1000, label='SM', color='red', linestyle='--', linewidth=1)
+#   axes[1].plot(monthly_subset['month'], monthly_subset['xgrb_rk_preds'] * 1000, label='SM+RK', color=color, linestyle='--', linewidth=1)
+#   axes[1].set_ylabel('DAMO$_3$ (ppb)', size=8, labelpad=-10)
+#   axes[1].set_yticks([20,65])
+#   handles, labels = axes[1].get_legend_handles_labels()
+#   fig.legend(handles, labels, loc='center left', bbox_to_anchor=(0.13, 0.5))
+#   plt.tight_layout()
+#   plt.savefig(out_ot_path, dpi=300)
+#   plt.show()
+    
+
+#Model Tuning Results
+pred_params = pd.read_csv(os.path.join(path_to_final_tables,'hist_model_params_seasons.csv'),index_col=0)
+ictive_params = pd.read_csv(os.path.join(path_to_final_tables,'modern_model_params_seasons.csv'),index_col=0)
+ive_params = pd.read_csv(os.path.join(path_to_final_tables,'theory_goat_model_params.csv'),index_col=0)
+iiearams = pd.read_csv(os.path.join(path_to_final_tables,'goat_model_params.csv'),index_col=0)
+choices ={
+    'adaboost':AdaBoostRegressor(random_state=42),
+    'gb':GradientBoostingRegressor(criterion='friedman_mse',random_state=42),
+    'xgrb':XGBRegressor(booster='gbtree',n_jobs=-1,random_state=42),
+    'rf':RandomForestRegressor(random_state=42,n_jobs=-1),
+    'mlper':MLPRegressor(activation='tanh',solver='adam',early_stopping=True,random_state=42)}
+# use_this = clone(choices[name]).set_params(**ast.literal_eval(model_params))
+for name in choices.keys():
+    pred_par = pred_params.reset_index(drop=True).at[0, f'{name}_params']
+    ictive_par = ictive_params.reset_index(drop=True).at[0, f'{name}_params']
+    ive_par = ive_params.reset_index(drop=True).at[0, f'{name}_params']
+    iiear = iiearams.reset_index(drop=True).at[0, f'{name}_params']
+    print(pred_par)
+    print(ictive_par)
+    print(ive_par)
+    print(iiear)
 # Daily Posters
 days_jan_2019=pd.date_range("2019-01-01","2019-01-31").strftime("%Y-%m-%d").tolist()
 days_oct_2020=pd.date_range("2020-10-01","2020-10-31").strftime("%Y-%m-%d").tolist()
@@ -665,7 +771,6 @@ days_jul_2021=pd.date_range("2021-07-01","2021-07-31").strftime("%Y-%m-%d").toli
 days_jun_2022=pd.date_range("2022-06-01","2022-06-30").strftime("%Y-%m-%d").tolist()
 days_apl_2023=pd.date_range("2023-04-01","2023-04-30").strftime("%Y-%m-%d").tolist()
 for yay in days_jan_2019:
-  print(yay)
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
 for yay in days_oct_2020:
@@ -681,58 +786,177 @@ for yay in days_apl_2023:
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
 
-from PIL import Image, ImageDraw
+######## LITERATURE INSPECTION#######
+# bib_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "writing", "citations", "MyLibraryBBT.bib")
+# im_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","writing", "imgs", "literature")
+# with open(bib_path, encoding='utf-8') as bibtex_file:
+#   bib_database = bibtexparser.load(bibtex_file)
+# all_records = pd.DataFrame(bib_database.entries)
+# for col in ['title', 'abstract', 'year']:
+#   if col not in all_records.columns:
+#     all_records[col] = None  
+# all_records.rename(columns={'title': 'Title','abstract': 'Abstract','year': 'Publication Date'}, inplace=True)
+# abstracts = all_records['Abstract'].fillna('').astype(str)
+# vectorizer = TfidfVectorizer().fit_transform(abstracts)
+# cosine_sim_matrix = cosine_similarity(vectorizer)
 
-path_to_model_rk=os.path.join(path_to_images,"prediction_displays","model_rk")
-path_to_surface_ozone=os.path.join(path_to_images,"prediction_displays","surface_ozone")
-path_to_posters=os.path.join(os.path.expanduser('~'),"Documents","Github","surface_ozone","writing",'maps','final_posters')
-os.makedirs(path_to_posters,exist_ok=True)
+# to_remove = set()
+# n = len(abstracts)
+# for i in range(n):
+#   for j in range(i + 1, n):
+#     if cosine_sim_matrix[i, j] > 0.975:
+#       to_remove.add(j)
 
-model_rk=os.path.join(path_to_model_rk,f'smark_{yay}.png')
-surface_ozone= os.path.join(path_to_surface_ozone,f'ozone_{yay}.png')
+# df_final = all_records.drop(index=list(to_remove))
+# vectorizer = TfidfVectorizer().fit_transform(abstracts)
+# cosine_sim_matrix = cosine_similarity(vectorizer)
+# Transport = ["transport*", "trajectory", "circulation", "advection", "plume", "dispersion", "air chemisty", "air quality"]
+# Modeling = ["linear regression", "ridge regression", "LASSO", "adaboost", "gradient boost", "random forest", "machine learn", "deep learn"]
+# Impact = ["death", "mortality", "injury", "illness*", "hospital", "disproportionate", "vulnerable", "risk", "burden"]
 
-top_img=Image.open(model_rk)
-bottom_img=Image.open(surface_ozone)
-total_height=3300
-stacked_img=Image.new("RGB",(2550,total_height), color='white')
-stacked_img.paste(top_img,(0,0))
-stacked_img.paste(bottom_img,(375,1625))
-draw = ImageDraw.Draw(stacked_img)
-page_number = "A.29"
-font_size = 8
-bbox = draw.textbbox((0, 0), page_number)
-text_width = bbox[2] - bbox[0]
-text_height = bbox[3] - bbox[1]
-x_text = (2550 - text_width) // 2
-y_text = total_height - text_height-25
-draw.text((x_text, y_text), page_number, fill="black",)
-plt.figure(figsize=(8.5,11),dpi=300)
-plt.imshow(stacked_img)
-plt.axis('off')
-stacked_img.save(f"{os.path.join(path_to_posters,f'poster_{yay}.png')}", dpi=(300, 300))
-plt.show()
+# abstracts_lower = df_final['Abstract'].fillna('').str.lower()
+# Transport_mask = abstracts_lower.str.contains('|'.join(Transport), na=False)
+# Modeling_mask = abstracts_lower.str.contains('|'.join(Modeling), na=False)
+# Impact_mask = abstracts_lower.str.contains('|'.join(Impact), na=False)
 
-from docx import Document
-from docx.shared import Inches
-import os
+# df_final['Category'] = ''
+# df_final.loc[Transport_mask, 'Category'] += 'Transport; '
+# df_final.loc[Modeling_mask, 'Category'] += 'Models; '
+# df_final.loc[Impact_mask, 'Category'] += 'Impact; '
+# df_final['Category'] = df_final['Category'].str.strip('; ')
+# model_set = set(df_final[Transport_mask].index)
+# health_set = set(df_final[Modeling_mask].index)
+# transport_set = set(df_final[Impact_mask].index)
+# plt.figure(figsize=(4, 3))
+# venn3([model_set, health_set, transport_set], set_labels=('Transport', 'Models', 'Impact'))
+# for text in plt.gca().texts:
+#     text.set_fontsize(8)
+# plt.tight_layout()
+# ptfiv=os.path.join(im_path,"VennDiagram.png")
+# plt.savefig(ptfiv,dpi=300)
+# plt.show()
 
-# Paths
-doc_path = "path/to/your/original.docx"
-image_folder = "path/to/your/pngs"
-output_path = "path/to/output_with_images.docx"
+# acronym_patterns = [
+#     r'\{*PM\s*_?\d+\.?\d*\}*', r'O_3', r'\{*NO\s*_?2\}*', r'NOx', r'\{*CO\s*_?2\}*', r'SO2', r'CH4',
+#     r'NH3', r'VOC', r'HONO', r'HNO3', r'HO2', r'HCHO', r'NO3', r'OH', r'SOA', r'AOD', r'BC', r'OC', r'CO', r'PM2.5', r'\{*O\s*-?3\}*'
+# ]
+# acronym_regex = re.compile(r'(?<![\w])(' + '|'.join(acronym_patterns) + r')(?![\w])', re.IGNORECASE)
 
-# Load existing document
-doc = Document(doc_path)
+# def latexify_acronym(match):
+#   word = match.group()
+#   clean = word.replace('_', '').replace(' ', '').replace('-', '').replace(' _', '').replace('{', '').replace('}', '').replace('(', '').replace(')', '').upper()
+#   prefix = ''.join([c for c in clean if not c.isdigit() and c != '.' and c != '-'])
+#   suffix = ''.join([c for c in clean if c.isdigit() or c == '.' or c == '-'])
+#   if suffix:
+#       return f'{prefix}{suffix}'
+#   return prefix
+# all_text_raw = (
+#     df_final['Title'].fillna('').astype(str) + ' ' +
+#     df_final['Abstract'].fillna('').astype(str)
+# ).str.cat(sep=' ')
 
-# Set image size to 8.5 x 11 inches
-page_width = Inches(8.5)
-page_height = Inches(11)
+# all_text_latex = acronym_regex.sub(latexify_acronym, all_text_raw)
+# wordcloud = WordCloud(width=1000,height=600,background_color='lightblue',min_word_length= 4,stopwords=STOPWORDS,colormap='Greys_r').generate(all_text_latex)
 
-# Append each PNG
-image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.png')])
-for image_file in image_files:
-    doc.add_page_break()
-    doc.add_picture(os.path.join(image_folder, image_file), width=page_width, height=page_height)
+# plt.figure(figsize=(5, 3))
+# plt.imshow(wordcloud, interpolation='bilinear')
+# plt.axis('off')
+# plt.tight_layout()
+# ptfi=os.path.join(im_path,"wordcloud_latex_subscripts.png")
+# plt.savefig(ptfi, bbox_inches='tight',dpi=300)
+# plt.show()
 
-# Save the updated document
-doc.save(output_path)
+# df_final['Publication Date'] = pd.to_numeric(df_final['Publication Date'], errors='coerce')
+# finale = df_final[df_final['Publication Date']>1969]
+# year_counts = finale['Publication Date'].dropna().value_counts().sort_index()
+
+# plt.figure(figsize=(5, 3))
+# ax = sns.lineplot(x=year_counts.index, y=year_counts.values, color='black', linewidth=3)
+# ax = sns.lineplot(x=year_counts.index, y=year_counts.values, color='gold', linewidth=1)
+# plt.scatter(year_counts.index, year_counts.values, color='gold', edgecolors='black',s=80,zorder=2, marker='o', linewidths=0.1)
+# for x, y in zip(year_counts.index, year_counts.values):
+#     plt.text(x, y, str(y), ha='center', va='center', fontsize=5,zorder=4,
+#              path_effects=[path_effects.withStroke(linewidth=1, foreground="white")])
+# plt.xlabel('Year')
+# plt.ylabel('Number of Publications')
+# plt.xlim(1969,2026)
+# plt.grid(axis='y')
+# plt.tight_layout()
+# pubot=os.path.join(im_path,"pubot.png")
+# plt.savefig(pubot, bbox_inches='tight',dpi=300)
+# plt.show()
+
+### Cleaning Literature
+import re
+def get_used_citations(chapter:int):
+  tex_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\chapter{chapter}.tex"  
+  bib_file = f"C:\\Users\\ryane\\Documents\\Github\\UCBMasters\\writing\\citations\\MyLibraryBBT.bib"  
+  output_bib = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\ch{chapter}_references.bib" 
+  with open(tex_file, "r", encoding="utf-8") as f:
+    tex_content = f.read()
+  citation_pattern = r"\\(?:cite|parencite|textcite|autocite|Cite|Parencite|Textcite|Autocite)\{([^}]*)\}"
+  matches = re.findall(citation_pattern, tex_content)
+  citation_keys = set()
+  for match in matches:
+    for key in match.split(","):
+      citation_keys.add(key.strip())
+  print(f"Found {len(citation_keys)} citation keys in the .tex file.")
+  with open(bib_file, "r", encoding="utf-8") as f:
+    bib_content = f.read()
+  entries = re.split(r"(?=@)", bib_content)
+  used_entries = []
+  for entry in entries:
+    match = re.match(r"@\w+\{([^,]+),", entry)
+    if match:
+      entry_key = match.group(1).strip()
+      if entry_key in citation_keys:
+        used_entries.append(entry)
+  with open(output_bib, "w", encoding="utf-8") as f:
+    f.write("\n".join(used_entries))
+  print(f"Extracted {len(used_entries)} entries into '{output_bib}'.")
+
+def get_used_citations(chapter:int):
+  tex_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\chapter{chapter}.tex"  
+  bib_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\informational\\WholeLibrary.bib"  
+  output_bib = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\ch{chapter}_references.bib"
+  with open(tex_file, "r", encoding="utf-8") as f:
+    tex_content = f.read()
+  citation_pattern = r"\\(?:cite|parencite|textcite|autocite|Cite|Parencite|Textcite|Autocite)\{([^}]*)\}"
+  matches = re.findall(citation_pattern, tex_content)
+  citation_keys = set()
+  for match in matches:
+    for key in match.split(","):
+      citation_keys.add(key.strip())
+  print(f"Found {len(citation_keys)} citation keys in the .tex file.")
+  with open(bib_file, "r", encoding="utf-8") as f:
+    bib_content = f.read()
+  entries = re.split(r"(?=@)", bib_content)
+  used_entries = []
+  bib_keys = set()
+  for entry in entries:
+    match = re.match(r"@\w+\{([^,]+),", entry)
+    if match:
+      entry_key = match.group(1).strip()
+      bib_keys.add(entry_key)
+      if entry_key in citation_keys:
+        used_entries.append(entry)
+  missing_keys = citation_keys - bib_keys
+  print(f"Extracted {len(used_entries)} entries into '{output_bib}'.")
+  with open(output_bib, "w", encoding="utf-8") as f:
+    f.write("\n".join(used_entries))
+  if missing_keys:
+    print(f"⚠ Missing {len(missing_keys)} citation(s) in .bib: {missing_keys}")
+  else:
+    print("✅ All citation keys from .tex are present in the .bib.")
+
+get_used_citations(1)
+get_used_citations(2)
+get_used_citations(3)
+get_used_citations(4)
+get_used_citations(5)
+get_used_citations(6)
+get_used_citations(7)
+
+177569+8833+68666+16200+48387+90932+31633
+
+112673+5140+49081+8716+21125+51508+17520
