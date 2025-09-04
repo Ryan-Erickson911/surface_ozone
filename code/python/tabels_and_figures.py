@@ -632,6 +632,9 @@ make_model_figure(theory_results,theory_results,'theory_model_preds','Theoretica
 make_model_figure(goat_results,goat_results,'goat_model_preds','G.O.A.T.24',features=list(goat_results.drop(columns=['site_id','elevation','lat','long','date','site_group']).columns))
 
 # Dataset Corr Plots
+modern_features=x_seasons[['site_id','date']+modern_feats].copy()
+modern_features['site_group']=modern_features['site_id'].astype(str).str[:4].map(site_group_names)
+modern_features['date'] = modern_features['date'].astype(str)
 make_corr_plot(hist_results,hist_features,'hist_corrs',fgsz=(5,3),circ_size=200)    
 make_corr_plot(modern_results,modern_features,'modern_corrs',fgsz=(5,3),circ_size=200)    
 make_corr_plot(theory_results,theory_features,'theory_corrs',fgsz=(5,3),circ_size=200)
@@ -651,7 +654,55 @@ theory_best_stats['Model'] = [namdict.get(m) for m in theory_best_stats['Model']
 goat_best_model,goat_best_stats=get_metrics(goat_results)
 goat_best_stats['Model'] = [namdict.get(m) for m in goat_best_stats['Model'] if m in namdict]
 
+# Functions to assign OHE Temporal Variables
 
+def get_season(month):
+    if month in [12, 1, 2]:
+        return 'Winter'
+    elif month in [3, 4, 5]:
+        return 'Spring'
+    elif month in [6, 7, 8]:
+        return 'Summer'
+    elif month in [9, 10, 11]:
+        return 'Fall'
+theory_results['date'] = pd.to_datetime(theory_results['date'], format='%Y-%m-%d')
+start_seas_df = theory_results[['date', 'max_value', 'xgrb_preds', 'xgrb_rk_preds']].groupby('date').mean().reset_index().copy()
+start_seas_df['month'] = start_seas_df['date'].dt.month
+start_seas_df['season'] = start_seas_df['month'].apply(get_season)
+season_describe = start_seas_df.groupby("season")[["max_value", "xgrb_preds", "xgrb_rk_preds"]].describe()
+
+season_describe
+# Create distribution plots
+fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
+
+variables = ['max_value', 'xgrb_preds', 'xgrb_rk_preds']
+colors = {'Winter': 'blue', 'Spring': 'green', 'Summer': 'red', 'Fall': 'orange'}
+nms = {'Ozone Measurement': variables[0],'Ozone Measurement': variables[1],'Ozone Measurement': variables[2]}
+for ax, var in zip(axes, variables):
+    for season, group in start_seas_df.groupby('season'):
+        ax.hist(group[var], bins=20, alpha=0.5, label=season, color=colors[season])
+    ax.set_title(f'Distribution of {var} by Season')
+    ax.set_xlabel(var)
+    ax.set_ylabel("Frequency")
+    ax.legend()
+
+plt.tight_layout()
+plt.show()
+
+start_seas_df['error_xgrb'] = (start_seas_df['max_value'] - start_seas_df['xgrb_preds']).abs()
+start_seas_df['error_xgrb_rk'] = (start_seas_df['max_value'] - start_seas_df['xgrb_rk_preds']).abs()
+
+# Aggregate mean error by season
+season_error = start_seas_df.groupby('season')[['error_xgrb', 'error_xgrb_rk']].mean()
+
+season_error*1000
+start_seas_df['year'] = start_seas_df['date'].dt.year
+
+
+
+start_seas_df.drop(columns='month', inplace=True)
+
+    
 def make_ot_plot_datasets(model: str, filename: str): 
     out = os.path.join(
         os.path.expanduser('~'),
@@ -666,15 +717,12 @@ def make_ot_plot_datasets(model: str, filename: str):
     goat_daily = goat_results[['date', 'max_value', f'{model}_preds', f'{model}_rk_preds']].copy()
     for df in [hist_daily, modern_daily, theory_daily, goat_daily]:
         df['date'] = pd.to_datetime(df['date'])
-    # Aggregate to daily means if multiple measurements per date
     hist_daily = hist_daily.groupby('date').mean().reset_index()
     modern_daily = modern_daily.groupby('date').mean().reset_index()
     theory_daily = theory_daily.groupby('date').mean().reset_index()
     goat_daily = goat_daily.groupby('date').mean().reset_index()
 
     fig, axes = plt.subplots(2, 1, figsize=(7.5, 6.5))
-
-    # First subplot: SM predictions vs in situ
     axes[0].plot(hist_daily['date'], hist_daily['max_value'] * 1000, label='In Situ', color='purple', lw=2)
     axes[0].plot(hist_daily['date'], hist_daily[f'{model}_preds'] * 1000, label='SM', color='red', lw=1)
     axes[0].plot(modern_daily['date'], modern_daily[f'{model}_preds'] * 1000, label='SM', color='blue', lw=1)
@@ -683,8 +731,6 @@ def make_ot_plot_datasets(model: str, filename: str):
     axes[0].set_xlim(pd.Timestamp('2018-12-01'), pd.Timestamp('2025-01-01'))
     axes[0].set_xticks([])
     axes[0].set_xticklabels([])
-
-    # Second subplot: SM+RK predictions
     axes[1].plot(hist_daily['date'], hist_daily['max_value'] * 1000, label='In Situ', color='purple', lw=2)
     axes[1].plot(hist_daily['date'], hist_daily[f'{model}_rk_preds'] * 1000, label='H.D', color='red', ls='--', lw=1)
     axes[1].plot(modern_daily['date'], modern_daily[f'{model}_rk_preds'] * 1000, label='M.D', color='blue', ls='--', lw=1)
@@ -693,18 +739,11 @@ def make_ot_plot_datasets(model: str, filename: str):
     axes[1].set_ylabel('DAMO$_3$ (ppb)', size=8)
     axes[1].set_xlim(pd.Timestamp('2018-12-01'), pd.Timestamp('2025-01-01'))
     axes[1].yaxis.set_label_coords(-0.035, 1.05)
-
-    # Legend
     handles, labels = axes[1].get_legend_handles_labels()
     fig.legend(handles, labels, loc='center left',
                bbox_to_anchor=(0.045, 0.5),
                borderpad=0.15, handlelength=1.5, labelspacing=0.25)
-
-    # Match your GUI-adjusted parameters
     plt.subplots_adjust(top=0.997, bottom=0.035, left=0.055, right=0.975, hspace=0.000, wspace=0.200)
-
-    # Save or show
-    # plt.savefig(out, dpi=300)
     plt.show()
 
 make_ot_plot_datasets('adaboost','adaboost_all_ds_ot.png')
@@ -785,16 +824,23 @@ for yay in days_jun_2022:
 for yay in days_apl_2023:
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
-
+"C:\Users\ryane\Documents\Github\RErickson_Thesis\FinalLibrary.bib"
 ######## LITERATURE INSPECTION#######
-# bib_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "UCBMasters", "writing", "citations", "MyLibraryBBT.bib")
+# bib_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "RErickson_Thesis", "FinalLibrary.bib")
 # im_path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","writing", "imgs", "literature")
-# with open(bib_path, encoding='utf-8') as bibtex_file:
-#   bib_database = bibtexparser.load(bibtex_file)
-# all_records = pd.DataFrame(bib_database.entries)
-# for col in ['title', 'abstract', 'year']:
-#   if col not in all_records.columns:
-#     all_records[col] = None  
+with open(bib_path, encoding='utf-8') as bibtex_file:
+  bib_database = bibtexparser.load(bibtex_file)
+all_records = pd.DataFrame(bib_database.entries)
+for col in ['title', 'abstract', 'year']:
+  if col not in all_records.columns:
+    all_records[col] = None  
+    
+filtered_records = all_records[all_records['doi'].notna()].copy()
+filtered_abs = all_records[all_records['abstract'].notna()].copy()
+# Optional: reset the index
+filtered_records.reset_index(drop=True, inplace=True)
+filtered_records['doi']
+
 # all_records.rename(columns={'title': 'Title','abstract': 'Abstract','year': 'Publication Date'}, inplace=True)
 # abstracts = all_records['Abstract'].fillna('').astype(str)
 # vectorizer = TfidfVectorizer().fit_transform(abstracts)
@@ -886,77 +932,64 @@ for yay in days_apl_2023:
 # plt.savefig(pubot, bbox_inches='tight',dpi=300)
 # plt.show()
 
-### Cleaning Literature
-import re
-def get_used_citations(chapter:int):
-  tex_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\chapter{chapter}.tex"  
-  bib_file = f"C:\\Users\\ryane\\Documents\\Github\\UCBMasters\\writing\\citations\\MyLibraryBBT.bib"  
-  output_bib = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\ch{chapter}_references.bib" 
-  with open(tex_file, "r", encoding="utf-8") as f:
-    tex_content = f.read()
-  citation_pattern = r"\\(?:cite|parencite|textcite|autocite|Cite|Parencite|Textcite|Autocite)\{([^}]*)\}"
-  matches = re.findall(citation_pattern, tex_content)
-  citation_keys = set()
-  for match in matches:
-    for key in match.split(","):
-      citation_keys.add(key.strip())
-  print(f"Found {len(citation_keys)} citation keys in the .tex file.")
-  with open(bib_file, "r", encoding="utf-8") as f:
-    bib_content = f.read()
-  entries = re.split(r"(?=@)", bib_content)
-  used_entries = []
-  for entry in entries:
-    match = re.match(r"@\w+\{([^,]+),", entry)
-    if match:
-      entry_key = match.group(1).strip()
-      if entry_key in citation_keys:
-        used_entries.append(entry)
-  with open(output_bib, "w", encoding="utf-8") as f:
-    f.write("\n".join(used_entries))
-  print(f"Extracted {len(used_entries)} entries into '{output_bib}'.")
+# ### Cleaning Literature
+# import re
+# def get_used_citations(chapter:int):
+#   tex_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\chapter{chapter}.tex"  
+#   bib_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\informational\\WholeLibrary.bib"  
+#   output_bib = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\ch{chapter}_references.bib"
+#   with open(tex_file, "r", encoding="utf-8") as f:
+#     tex_content = f.read()
+#   citation_pattern = r"\\(?:cite|parencite|textcite|autocite|Cite|Parencite|Textcite|Autocite)\{([^}]*)\}"
+#   matches = re.findall(citation_pattern, tex_content)
+#   citation_keys = set()
+#   for match in matches:
+#     for key in match.split(","):
+#       citation_keys.add(key.strip())
+#   print(f"Found {len(citation_keys)} citation keys in the .tex file.")
+#   with open(bib_file, "r", encoding="utf-8") as f:
+#     bib_content = f.read()
+#   entries = re.split(r"(?=@)", bib_content)
+#   used_entries = []
+#   bib_keys = set()
+#   for entry in entries:
+#     match = re.match(r"@\w+\{([^,]+),", entry)
+#     if match:
+#       entry_key = match.group(1).strip()
+#       bib_keys.add(entry_key)
+#       if entry_key in citation_keys:
+#         used_entries.append(entry)
+#   missing_keys = citation_keys - bib_keys
+#   print(f"Extracted {len(used_entries)} entries into '{output_bib}'.")
+#   with open(output_bib, "w", encoding="utf-8") as f:
+#     f.write("\n".join(used_entries))
+#   if missing_keys:
+#     print(f"⚠ Missing {len(missing_keys)} citation(s) in .bib: {missing_keys}")
+#   else:
+#     print("✅ All citation keys from .tex are present in the .bib.")
 
-def get_used_citations(chapter:int):
-  tex_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\chapter{chapter}.tex"  
-  bib_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\informational\\WholeLibrary.bib"  
-  output_bib = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\Ch{chapter}\\ch{chapter}_references.bib"
-  with open(tex_file, "r", encoding="utf-8") as f:
-    tex_content = f.read()
-  citation_pattern = r"\\(?:cite|parencite|textcite|autocite|Cite|Parencite|Textcite|Autocite)\{([^}]*)\}"
-  matches = re.findall(citation_pattern, tex_content)
-  citation_keys = set()
-  for match in matches:
-    for key in match.split(","):
-      citation_keys.add(key.strip())
-  print(f"Found {len(citation_keys)} citation keys in the .tex file.")
-  with open(bib_file, "r", encoding="utf-8") as f:
-    bib_content = f.read()
-  entries = re.split(r"(?=@)", bib_content)
-  used_entries = []
-  bib_keys = set()
-  for entry in entries:
-    match = re.match(r"@\w+\{([^,]+),", entry)
-    if match:
-      entry_key = match.group(1).strip()
-      bib_keys.add(entry_key)
-      if entry_key in citation_keys:
-        used_entries.append(entry)
-  missing_keys = citation_keys - bib_keys
-  print(f"Extracted {len(used_entries)} entries into '{output_bib}'.")
-  with open(output_bib, "w", encoding="utf-8") as f:
-    f.write("\n".join(used_entries))
-  if missing_keys:
-    print(f"⚠ Missing {len(missing_keys)} citation(s) in .bib: {missing_keys}")
-  else:
-    print("✅ All citation keys from .tex are present in the .bib.")
+# get_used_citations(1)
+# get_used_citations(2)
+# get_used_citations(3)
+# get_used_citations(4)
+# get_used_citations(5)
+# get_used_citations(6)
+# get_used_citations(7)
 
-get_used_citations(1)
-get_used_citations(2)
-get_used_citations(3)
-get_used_citations(4)
-get_used_citations(5)
-get_used_citations(6)
-get_used_citations(7)
+bib_file = f"C:\\Users\\ryane\\Documents\\Github\\surface_ozone\\thesis\\informational\\WholeLibrary.bib"  
+with open(bib_file, 'r', encoding='utf-8') as file:
+  bib_content = file.read()
 
-177569+8833+68666+16200+48387+90932+31633
-
-112673+5140+49081+8716+21125+51508+17520
+bib_data = parse_file(bib_file)
+from pathlib import Path
+from pybtex.database import parse_file
+# Extract entries with abstracts
+entries_with_abstract = []
+for key, entry in bib_data.entries.items():
+    if 'abstract' in entry.fields:
+        entries_with_abstract.append({
+            'citation_key': key,
+            'title': entry.fields.get('title', 'N/A'),
+            'author': entry.persons.get('author', []),
+            'abstract': entry.fields['abstract']
+        })
