@@ -415,27 +415,20 @@ def smark_plot(
     with memfile.open(**elev_kwargs) as tmp:
       tmp.write(ozone_data,1)
       clipped_ozone,_=mask(tmp,shapes=shapes,crop=True,nodata=np.nan)
-      clipped_ozone=clipped_ozone[0]*1000
-  ls=LightSource(azdeg=315,altdeg=45)
-  hillshade=ls.shade(clipped_elev,cmap=cm.Greys,vert_exag=0.00001137,dx=250,dy=250)
+      clipped_ozone=np.round(clipped_ozone[0]*1000,2)
   height,width=clipped_elev.shape
   extent=[clipped_transform[2],clipped_transform[2]+clipped_transform[0]*width,clipped_transform[5]+clipped_transform[4]*height,clipped_transform[5]]
-  fig,ax=plt.subplots(figsize=(4,3.5))
+  fig,ax=plt.subplots(figsize=(4.25,4))
   ozone_img=ax.imshow(clipped_ozone,cmap='Blues',extent=extent)
-  cbar=fig.colorbar(ozone_img,ax=ax,fraction=0.025,pad=0.02,label=f'O$_3$ (ppb)')
+  cbar=fig.colorbar(ozone_img,ax=ax,fraction=0.025,pad=0.025,label=f'O$_3$ (ppb)')
   cbar.ax.yaxis.label.set_size(6)
   cbar.ax.tick_params(labelsize=6)
   ax.tick_params(labelsize=6)
-  photuc.boundary.plot(ax=ax,edgecolor=photuc['color'],linewidth=0.65,alpha=0.45)
-  legend_patches=[Patch(edgecolor=color,fill=False,label=county) for county,color in color_map.items()]
-  ax.legend(handles=legend_patches,title="Counties",loc='lower left',frameon=True,framealpha=0.9,facecolor='white',edgecolor='black',fontsize=6,title_fontsize=6,labelspacing=0.25)
-  ax.text(1.05,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=6,bbox=dict(boxstyle='round,pad=0.5',facecolor='white',edgecolor='black',alpha=0.9))
+  ax.text(1.05,0.98,stat_text,transform=ax.transAxes,ha='right',va='top',fontsize=6,bbox=dict(boxstyle='round,pad=0.25',facecolor='white',edgecolor='black',alpha=0.9))
   ax.set_axis_off()
-  fig.tight_layout()
   # plt.show()
   fig.savefig(fin,dpi=300)
   plt.close()
-  
 
 ##### Only need to run shape file creation and preprocessing once #####
 # county_names={'013': 'Maricopa County','019': 'Pima County','021': 'Pinal County'}
@@ -484,7 +477,7 @@ def smark_plot(
 # os.makedirs(os.path.join(mapping_data,'income_pop_2020_2023'),exist_ok=True) 
 # shape2019.to_file(os.path.join(mapping_data,'income_pop_2019','income_pop_2019.shp'),driver='ESRI shapefile',index=shape2019.index.tolist(),encoding='utf-8')
 # photuc_shape2020_2023.to_file(os.path.join(mapping_data,'income_pop_2020_2023','income_pop_2020_2023.shp'),driver='ESRI shapefile',index=photuc_shape2020_2023.index.tolist(),encoding='utf-8')
- 
+
 site_group_names={'4013': 'Maricopa','4019': 'Pima','4021': 'Pinal'}
 hist_results=pd.read_csv(os.path.join(path_to_final_tables,'hist_model_results_seasons.csv'),index_col=0)
 hist_results['site_group']=hist_results['site_id'].astype(str).str[:4].map(site_group_names)
@@ -810,8 +803,8 @@ days_jul_2021=pd.date_range("2021-07-01","2021-07-31").strftime("%Y-%m-%d").toli
 days_jun_2022=pd.date_range("2022-06-01","2022-06-30").strftime("%Y-%m-%d").tolist()
 days_apl_2023=pd.date_range("2023-04-01","2023-04-30").strftime("%Y-%m-%d").tolist()
 for yay in days_jan_2019:
-  plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
+  plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
 for yay in days_oct_2020:
   plot_model_rk_layout(day=yay,title='XGB Trend and RK Estimation',ysm_plot=ysm_plot,yrk_plot=yrk_plot,feature_stack_path=x_plot)
   smark_plot(df=theory_results,day=yay)
@@ -993,3 +986,120 @@ for key, entry in bib_data.entries.items():
             'author': entry.persons.get('author', []),
             'abstract': entry.fields['abstract']
         })
+        
+        
+import calendar
+
+def day_pairs(year_month: str):
+    year, month = map(int, year_month.split("-"))
+    # get number of days in that month
+    _, num_days = calendar.monthrange(year, month)
+    
+    # build list of consecutive pairs
+    pairs = [(str(d).zfill(2), str(d+1).zfill(2)) for d in range(1, num_days)]
+    return pairs
+
+import os
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+import imageio.v2 as imageio
+import rasterio as rio
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.mask import mask
+from datetime import datetime
+def clean_animation(df, year_month="2019-01"):
+    pairs = day_pairs(year_month)
+    elev = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","data", "tifs", "elevation", "elevation.tif")
+    path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","writing")
+    path_out = os.path.join(path, "imgs",'gifs', year_month)
+    os.makedirs(path_out, exist_ok=True)
+    gif_out = os.path.join(path, "imgs",'gifs', year_month,'ozone.gif')
+    target_crs = "EPSG:26949"
+    frames = []
+    for day, nxt in pairs:
+        r1 = os.path.join(path,'maps','smark_outputs', f"surf_o3_{year_month}-{day}.tif")
+        r2 = os.path.join(path,'maps','smark_outputs', f"surf_o3_{year_month}-{nxt}.tif")
+        with rio.open(elev) as src:
+            elev_transform, elev_width, elev_height = calculate_default_transform(
+                src.crs, target_crs, src.width, src.height, *src.bounds
+            )
+            elev_kwargs = src.meta.copy()
+            elev_kwargs.update({
+                "crs": target_crs,
+                "transform": elev_transform,
+                "width": elev_width,
+                "height": elev_height,
+                "dtype": "float32"
+            })
+        def largest(arr, n):
+          ans = max(arr)
+          return ans
+        def reproject_to_grid(raster_path):
+            with rio.open(raster_path) as src:
+                arr = np.empty((elev_height, elev_width), dtype=np.float32)
+                reproject(
+                    source=rio.band(src, 1),
+                    destination=arr,
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=elev_transform,
+                    dst_crs=target_crs,
+                    resampling=Resampling.nearest
+                )
+            return arr
+        arr1 = reproject_to_grid(r1)
+        arr2 = reproject_to_grid(r2)
+        a = arr1
+        f = arr2
+        e = np.divide(np.subtract(f, a), 60)
+        b = np.add(arr1,e)
+        step_arrays = [b]
+        for i in range(0,60):  
+          c = np.add(e,b)
+          step_arrays.append(c)
+          b=c
+        day_str = f"{year_month}-{day}"
+        rmse = round(np.sqrt(
+            ((df[df["date"] == day_str]["max_value"] -
+              df[df["date"] == day_str]["xgrb_rk_preds"])**2).mean()
+        ) * 1000, 3)
+        mean = round(df[df["date"] == day_str]["xgrb_rk_preds"].mean() * 1000, 2)
+        maxv = round(df[df["date"] == day_str]["xgrb_rk_preds"].max() * 1000, 2)
+        minv = round(df[df["date"] == day_str]["xgrb_rk_preds"].min() * 1000, 2)
+        height, width = a.shape
+        extent = [
+            elev_transform[2],
+            elev_transform[2] + elev_transform[0] * width,
+            elev_transform[5] + elev_transform[4] * height,
+            elev_transform[5],
+        ]
+        day_num=int(day_str[-2:])
+        new_day=datetime.strptime(day_str,'%Y-%m-%d').replace(day=day_num).strftime('%B {S},%Y')
+        formatted_day=new_day.replace('{S}',suffix(day_num))
+        stat_text = f"{formatted_day}\n    Max: {maxv}\n    Mean: {mean}\n    Min: {minv}\n    RMSE: {rmse}"
+        for i, arr in enumerate(step_arrays, start=1):
+            fig, ax = plt.subplots(figsize=(4.25, 4))
+            minl = math.ceil(np.nanmin(arr)*1000)
+            maxl = math.floor(np.nanmax(arr)*1000)
+            ozone_img = ax.imshow(arr*1000, cmap="Blues", extent=extent)
+            cbar = fig.colorbar(ozone_img, ax=ax, fraction=0.025, pad=0.001,
+                                label="O$_3$ (ppb)",ticks=[minl,maxl])
+            cbar.ax.yaxis.label.set_size(6)
+            cbar.ax.tick_params(labelsize=6)
+            ax.tick_params(labelsize=6)
+            ax.text(1.05, 0.98, stat_text,
+                    transform=ax.transAxes, ha="right", va="top",
+                    fontsize=6,
+                    bbox=dict(boxstyle="round,pad=0.25", facecolor="white",edgecolor="black", alpha=0.9))
+            ax.set_axis_off()
+            frame_path = os.path.join(path_out, f"{day}_{nxt}_{i}.png")
+            plt.savefig(frame_path, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            frames.append(frame_path)
+    images = [imageio.imread(f) for f in frames]
+    imageio.mimsave(gif_out, images)
+    print(f"GIF saved to {gif_out}")
+    for f in frames:
+        os.remove(f)
+clean_animation(df=theory_results,year_month='2019-01')
