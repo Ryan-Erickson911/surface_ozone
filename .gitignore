@@ -1,2 +1,6 @@
 .venv
 data
+writing\maps\feature_plots
+writing\maps\rk_outputs
+writing\maps\ml_outputs
+writing\maps\smark_outputs
