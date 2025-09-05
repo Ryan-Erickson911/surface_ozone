@@ -1008,54 +1008,51 @@ import rasterio as rio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.mask import mask
 from datetime import datetime
+
+def reproject_to_grid(raster_path):
+    target_crs = "EPSG:26949"
+    elev = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","data", "tifs", "elevation", "elevation.tif")
+    with rio.open(elev) as src:
+      elev_transform, elev_width, elev_height = calculate_default_transform(
+          src.crs, target_crs, src.width, src.height, *src.bounds
+      )
+      elev_kwargs = src.meta.copy()
+      elev_kwargs.update({"crs": target_crs,
+                          "transform": elev_transform,
+                          "width": elev_width,
+                          "height": elev_height,
+                          "dtype": "float32"})
+      with rio.open(raster_path) as src:
+          arr = np.empty((elev_height, elev_width), dtype=np.float32)
+          reproject(
+              source=rio.band(src, 1),
+              destination=arr,
+              src_transform=src.transform,
+              src_crs=src.crs,
+              dst_transform=elev_transform,
+              dst_crs=target_crs,
+              resampling=Resampling.nearest
+          )
+      return arr,elev_transform
+    
 def clean_animation(df, year_month="2019-01"):
     pairs = day_pairs(year_month)
-    elev = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","data", "tifs", "elevation", "elevation.tif")
     path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","writing")
     path_out = os.path.join(path, "imgs",'gifs', year_month)
     os.makedirs(path_out, exist_ok=True)
     gif_out = os.path.join(path, "imgs",'gifs', year_month,'ozone.gif')
-    target_crs = "EPSG:26949"
     frames = []
     for day, nxt in pairs:
         r1 = os.path.join(path,'maps','smark_outputs', f"surf_o3_{year_month}-{day}.tif")
         r2 = os.path.join(path,'maps','smark_outputs', f"surf_o3_{year_month}-{nxt}.tif")
-        with rio.open(elev) as src:
-            elev_transform, elev_width, elev_height = calculate_default_transform(
-                src.crs, target_crs, src.width, src.height, *src.bounds
-            )
-            elev_kwargs = src.meta.copy()
-            elev_kwargs.update({
-                "crs": target_crs,
-                "transform": elev_transform,
-                "width": elev_width,
-                "height": elev_height,
-                "dtype": "float32"
-            })
-        def largest(arr, n):
-          ans = max(arr)
-          return ans
-        def reproject_to_grid(raster_path):
-            with rio.open(raster_path) as src:
-                arr = np.empty((elev_height, elev_width), dtype=np.float32)
-                reproject(
-                    source=rio.band(src, 1),
-                    destination=arr,
-                    src_transform=src.transform,
-                    src_crs=src.crs,
-                    dst_transform=elev_transform,
-                    dst_crs=target_crs,
-                    resampling=Resampling.nearest
-                )
-            return arr
-        arr1 = reproject_to_grid(r1)
-        arr2 = reproject_to_grid(r2)
+        arr1,elev_transform = reproject_to_grid(r1)
+        arr2,_ = reproject_to_grid(r2)
         a = arr1
         f = arr2
-        e = np.divide(np.subtract(f, a), 60)
+        e = np.divide(np.subtract(f, a), 30)
         b = np.add(arr1,e)
         step_arrays = [b]
-        for i in range(0,60):  
+        for i in range(0,30):  
           c = np.add(e,b)
           step_arrays.append(c)
           b=c
@@ -1079,7 +1076,7 @@ def clean_animation(df, year_month="2019-01"):
         formatted_day=new_day.replace('{S}',suffix(day_num))
         stat_text = f"{formatted_day}\n    Max: {maxv}\n    Mean: {mean}\n    Min: {minv}\n    RMSE: {rmse}"
         for i, arr in enumerate(step_arrays, start=1):
-            fig, ax = plt.subplots(figsize=(4.25, 4))
+            fig, ax = plt.subplots(figsize=(4, 3.75))
             minl = math.ceil(np.nanmin(arr)*1000)
             maxl = math.floor(np.nanmax(arr)*1000)
             ozone_img = ax.imshow(arr*1000, cmap="Blues", extent=extent)
@@ -1094,7 +1091,7 @@ def clean_animation(df, year_month="2019-01"):
                     bbox=dict(boxstyle="round,pad=0.25", facecolor="white",edgecolor="black", alpha=0.9))
             ax.set_axis_off()
             frame_path = os.path.join(path_out, f"{day}_{nxt}_{i}.png")
-            plt.savefig(frame_path, dpi=300, bbox_inches="tight")
+            plt.savefig(frame_path, dpi=150, bbox_inches="tight")
             plt.close(fig)
             frames.append(frame_path)
     images = [imageio.imread(f) for f in frames]
@@ -1103,3 +1100,69 @@ def clean_animation(df, year_month="2019-01"):
     for f in frames:
         os.remove(f)
 clean_animation(df=theory_results,year_month='2019-01')
+clean_animation(df=theory_results,year_month='2020-10')
+clean_animation(df=theory_results,year_month='2021-07')
+clean_animation(df=theory_results,year_month='2022-06')
+clean_animation(df=theory_results,year_month='2023-04')
+
+def clean_rk_animation(df, year_month="2019-01"):
+    pairs = day_pairs(year_month)
+    path = os.path.join(os.path.expanduser('~'), "Documents", "Github", "surface_ozone","writing")
+    path_out = os.path.join(path, "imgs",'gifs', year_month)
+    os.makedirs(path_out, exist_ok=True)
+    gif_out = os.path.join(path, "imgs",'gifs', year_month,'rk_ozone.gif')
+    frames = []
+    for day, nxt in pairs:
+        r1 = os.path.join(path,'maps','rk_outputs', f"surf_o3_rkpreds_{year_month}-{day}.tif")
+        r2 = os.path.join(path,'maps','rk_outputs', f"surf_o3_rkpreds_{year_month}-{nxt}.tif")
+        arr1,elev_transform = reproject_to_grid(r1)
+        arr2,_ = reproject_to_grid(r2)
+        a = arr1
+        f = arr2
+        e = np.divide(np.subtract(f, a), 30)
+        b = np.add(arr1,e)
+        step_arrays = [b]
+        for i in range(0,30):  
+          c = np.add(e,b)
+          step_arrays.append(c)
+          b=c
+        day_str = f"{year_month}-{day}"
+        mean = round(df[df["date"] == day_str]["max_value"].mean()-df[df["date"] == day_str]["xgrb_preds"].mean() * 1000, 2)
+        maxv = round(df[df["date"] == day_str]["max_value"].max()-df[df["date"] == day_str]["xgrb_preds"].max() * 1000, 2)
+        minv = round(df[df["date"] == day_str]["max_value"].min()-df[df["date"] == day_str]["xgrb_preds"].min() * 1000, 2)
+        height, width = a.shape
+        extent = [
+            elev_transform[2],
+            elev_transform[2] + elev_transform[0] * width,
+            elev_transform[5] + elev_transform[4] * height,
+            elev_transform[5],
+        ]
+        day_num=int(day_str[-2:])
+        new_day=datetime.strptime(day_str,'%Y-%m-%d').replace(day=day_num).strftime('%B {S},%Y')
+        formatted_day=new_day.replace('{S}',suffix(day_num))
+        stat_text = f"{formatted_day}\n    Max: {maxv}\n    Mean: {mean}\n    Min: {minv}"
+        for i, arr in enumerate(step_arrays, start=1):
+            fig, ax = plt.subplots(figsize=(4, 4))
+            minl = math.ceil(np.nanmin(arr)*1000)
+            maxl = math.floor(np.nanmax(arr)*1000)
+            ozone_img = ax.imshow(arr*1000, cmap="RdBu_r", extent=extent)
+            cbar = fig.colorbar(ozone_img, ax=ax, fraction=0.03, pad=0.001,
+                                label="O$_3$ (ppb)",ticks=[minl,maxl])
+            cbar.ax.yaxis.label.set_size(6)
+            cbar.ax.tick_params(labelsize=6)
+            ax.tick_params(labelsize=6)
+            ax.text(1.05, 0.98, stat_text,
+                    transform=ax.transAxes, ha="right", va="top",
+                    fontsize=6,
+                    bbox=dict(boxstyle="round,pad=0.25", facecolor="white",edgecolor="black", alpha=0.9))
+            ax.set_axis_off()
+            frame_path = os.path.join(path_out, f"{day}_{nxt}_{i}.png")
+            plt.savefig(frame_path, dpi=150, bbox_inches="tight")
+            plt.close(fig)
+            frames.append(frame_path)
+    images = [imageio.imread(f) for f in frames]
+    imageio.mimsave(gif_out, images)
+    print(f"GIF saved to {gif_out}")
+    for f in frames:
+        os.remove(f)
+clean_rk_animation(df=theory_results,year_month='2019-01')
