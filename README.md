@@ -32,4 +32,13 @@ All current projections are in EPSG 32612 for accurate depictions of Arizona bas
 The following is a depiciton of basic raster predictions from ```tables_and_figues.py```
 
 # Example Rasters:
+## January 2019:
 ![test](https://github.com/Ryan-Erickson911/surface_ozone/blob/main/writing/imgs/gifs/2019-01/ozone.gif "Logo Title Text 1")
+## October 2020:
+![test](https://github.com/Ryan-Erickson911/surface_ozone/blob/main/writing/imgs/gifs/2020-10/ozone.gif "Logo Title Text 1")
+## July 2021:
+![test](https://github.com/Ryan-Erickson911/surface_ozone/blob/main/writing/imgs/gifs/2021-07/ozone.gif "Logo Title Text 1")
+## June 2022:
+![test](https://github.com/Ryan-Erickson911/surface_ozone/blob/main/writing/imgs/gifs/2022-06/ozone.gif "Logo Title Text 1")
+## April 2023:
+![test](https://github.com/Ryan-Erickson911/surface_ozone/blob/main/writing/imgs/gifs/2023-04/ozone.gif "Logo Title Text 1")
